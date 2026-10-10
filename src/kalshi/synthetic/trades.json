@@ -1,0 +1,58 @@
+{
+ "KXSYNTH-26DEC-T3.75": {
+  "cursor": "c3ludGhldGlj",
+  "trades": [
+   {
+    "count": 5,
+    "created_time": "2026-10-10T11:50:00Z",
+    "no_price": 59,
+    "taker_side": "no",
+    "ticker": "KXSYNTH-26DEC-T3.75",
+    "trade_id": "5e2b7f0c-0000-4000-8000-000000000003",
+    "yes_price": 41
+   }
+  ]
+ },
+ "KXSYNTH-26DEC-T4.00": {
+  "cursor": "c3ludGhldGlj",
+  "trades": [
+   {
+    "count_fp": "15.00",
+    "created_time": "2026-10-10T11:58:30.123456Z",
+    "is_block_trade": false,
+    "no_price_dollars": "0.5700",
+    "taker_book_side": "ask",
+    "taker_outcome_side": "yes",
+    "taker_side": "yes",
+    "ticker": "KXSYNTH-26DEC-T4.00",
+    "trade_id": "5e2b7f0c-0000-4000-8000-000000000001",
+    "yes_price_dollars": "0.4300"
+   }
+  ]
+ },
+ "KXSYNTH-26DEC-T4.25": {
+  "cursor": "c3ludGhldGlj",
+  "trades": [
+   {
+    "count_fp": "15.00",
+    "created_time": "2026-10-10T11:57:00.5Z",
+    "is_block_trade": false,
+    "no_price_dollars": "0.876543210987654322",
+    "taker_book_side": "ask",
+    "taker_outcome_side": "yes",
+    "taker_side": "yes",
+    "ticker": "KXSYNTH-26DEC-T4.25",
+    "trade_id": "5e2b7f0c-0000-4000-8000-000000000002",
+    "yes_price_dollars": "0.123456789012345678"
+   }
+  ]
+ },
+ "KXSYNTH-26DEC-T4.50": {
+  "cursor": "",
+  "trades": []
+ },
+ "KXSYNTHRANGE-26DEC": {
+  "cursor": "",
+  "trades": []
+ }
+}

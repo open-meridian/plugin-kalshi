@@ -1,0 +1,309 @@
+"""`make e2e` and `make e2e-recorded`: the plugin end to end on core's plugin
+harness (contract v19), in synthetic mode, beside a reader (e2e/reader.py).
+
+1. Launched: the plugin registers its catalogue; the deployment admin's tool
+   lists its one dataset, `live`, of prices and quotes, on the UTC day ending
+   at 00:00, pulled or streamed, its default licence served, not kept.
+2. Synthetic mode on: nothing is asked of the venue and no record minted
+   until the lake wants something -- never the venue's list. The reader then
+   names a contract as a custodian's book holds it, by the custodian's own
+   symbol, a market Kalshi does not state as binary the same way, and the
+   dollar by ISO 4217.
+3. Licensed and entitled: the admin sets the dataset's licence -- served,
+   not kept, as the default says -- and entitles the reader to it.
+4. Prices wanted and served: the reader follows the contract and reads its
+   latest; the lake asks the plugin, which reads the record (W3.6), names it
+   Kalshi's contract by the custodian's symbol, joins Kalshi's ticker to it
+   with the class, type and Kalshi's words offered, resolves the dollar, and
+   records its last trade, best bid and ask -- the ask the payout less the
+   best NO bid -- in dollars, exactly as stated; the lake keeps none and
+   serves each to the reader, who hears them, each naming its raw record and
+   the venue as reported.
+5. Quotes wanted and served: the reader reads its latest quote; the plugin
+   records its best bid and offer with their sizes, the NO side converted,
+   served to the reader, who hears it.
+6. Declined: the market Kalshi does not state as binary is declined as not
+   covered.
+7. Parity: the plugin's two read tools answer through the deployment's MCP
+   what its two pages show: one contract mapped, its payout of one dollar,
+   the dollar's record.
+8. Its raw responses are in its granted storage, and `store lake` prints no
+   row of the dataset kept, each serving of it, the wants asked, answered,
+   declined and withdrawn, and the venue's miss.
+
+`make e2e-recorded` (`--recorded=DIR`) runs the same on a developer's
+recording of Kalshi's real answers (e2e/record.py), naming the first binary
+contract it holds, and holds each row to its shape rather than to the
+synthetic exchange's values.
+
+Run from the repository's root by the Makefile, which builds the image,
+copies the harness out and writes the plugins' compose file first, and
+exports what the compose files read. Standard library only.
+"""
+
+import json
+import pathlib
+import subprocess
+import sys
+import time
+import urllib.parse
+from decimal import Decimal
+
+VENUE = "kalshi"
+NAME = "Kalshi"
+DATASET = f"{VENUE}:live"
+LOG = ".e2e/runner.log"
+RECORDED = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--recorded=")]
+EXACT = not RECORDED
+COMPOSE = ["docker", "compose", "-p", f"{VENUE}-e2e", "-f", ".e2e/harness/compose.yaml",
+           "-f", ".e2e/harness/plugins.yaml", "-f", "e2e/plugin.yaml",
+           *[a for a in sys.argv[1:] if not a.startswith("--recorded=")]]
+#: The synthetic exchange's binary contract, what it states, and its range
+#: market, which Kalshi does not state as binary.
+CONTRACT = "KXSYNTH-26DEC-T4.00"
+NOT_BINARY = "KXSYNTHRANGE-26DEC"
+STATED = {"PRICE_KIND_LAST": "0.4300", "PRICE_KIND_BID": "0.4300", "PRICE_KIND_ASK": "0.4400"}
+QUOTE = {"bid_amount": "0.4300", "bid_quantity": "55.00", "ask_amount": "0.4400",
+         "ask_quantity": "30.00"}
+
+
+class Failed(Exception):
+    pass
+
+
+def log(text):
+    with open(LOG, "a", encoding="utf-8") as kept:
+        kept.write(text + "\n")
+
+
+def compose(*args, check=True):
+    done = subprocess.run(COMPOSE + list(args), capture_output=True, text=True, timeout=600)
+    log(f"$ compose {' '.join(args)[:300]}\n{done.stdout[-4000:]}{done.stderr[-2000:]}")
+    if check and done.returncode != 0:
+        raise Failed(f"compose {' '.join(args)[:200]}: {(done.stdout + done.stderr).strip()[-600:]}")
+    return done
+
+
+def runner(*args, check=True):
+    done = compose("run", "--rm", "-T", "runner", *args, check=check)
+    return done.stdout if check else done
+
+
+def must(condition, why):
+    if not condition:
+        raise Failed(why)
+
+
+def until(seconds, attempt, what):
+    deadline = time.monotonic() + seconds
+    last = None
+    while True:
+        try:
+            answer = attempt()
+        except Failed as failed:
+            answer, last = None, failed
+        if answer:
+            return answer
+        if time.monotonic() > deadline:
+            raise Failed(f"{what}, in {seconds} seconds" + (f": {last}" if last else ""))
+        time.sleep(2)
+
+
+def page(instance, level, path):
+    said = runner("page", "--instance", instance, "--level", level, path)
+    status, _, body = said.partition("\n")
+    must(status.strip() == "200", f"{instance} {path} answered {said[-600:]}")
+    return body
+
+
+def read(path):
+    return json.loads(page("reader", "read", path))
+
+
+def call(tool, arguments, *outcomes):
+    done = runner("mcp", "call", tool, json.dumps(arguments), check=False)
+    try:
+        answer = json.loads(done.stdout)
+    except ValueError:
+        raise Failed(f"{tool}: no answer: {(done.stdout + done.stderr)[-400:]}") from None
+    must(answer.get("outcome") in outcomes,
+         f"{tool} answered {answer.get('outcome')}, not {outcomes}: {done.stdout[-700:]}")
+    return answer
+
+
+def recorded_contract(directory):
+    """The first binary market a recording holds, by its ticker."""
+    for path in sorted(pathlib.Path(directory).rglob("*.json")):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if record.get("call") == "market" and record.get("status") == 200:
+            market = json.loads(record["body"]).get("market", {})
+            if market.get("market_type") == "binary":
+                return market["ticker"]
+    raise Failed(f"no binary market is recorded under {directory}")
+
+
+def run():
+    started = time.time()
+    contract = recorded_contract(RECORDED[0]) if RECORDED else CONTRACT
+    compose("down", "-v", "--remove-orphans", check=False)
+    compose("up", "-d")
+    for instance in (VENUE, "reader"):
+        runner("ready", "--instance", instance)
+    runner("grant", "--instance", "reader", "--level", "read", "--role", "reporting")
+    runner("grant", "--instance", VENUE, "--level", "admin")
+    runner("mcp", "connect", "--covers", "deployment_admin", "--covers", f"{VENUE}:admin")
+    tools = runner("mcp", "list").split()
+    named = {t.rsplit("__", 1)[-1]: t for t in tools}
+    for name in ("dashboard__list_datasets", "read_connection", "read_datasets"):
+        must(name.rsplit("__", 1)[-1] in named, f"step 1, {name} is listed: {tools}")
+
+    # 1. The catalogue, as the deployment admin's tool lists it.
+    def datasets():
+        held = {d["dataset"]: d for d in
+                call("dashboard__list_datasets", {}, "read")["data"]["datasets"]}
+        return held if DATASET in held else None
+    held = until(90, datasets, "step 1, the dataset was not listed")
+    entry, licence = held[DATASET]["catalogue_entry"], held[DATASET]["licence"]
+    must(entry["modes"] == ["pull", "stream"] and entry["day_time_zone"] == "Etc/UTC"
+         and entry.get("day_end_minute", 0) == 0, f"step 1, its entry: {entry}")
+    must(licence["kept"] is False and licence["set_by_the_deployment"] is False,
+         f"step 1, its default licence served, not kept: {licence}")
+
+    # 2. Synthetic mode: nothing asked, nothing minted; then the reader's
+    # records, as a custodian's book holds them.
+    runner("settings", "--instance", VENUE, "synthetic=true")
+    served = until(90, lambda: call(named["read_datasets"], {}, "read", "unchanged")["data"],
+                   "step 2, read_datasets did not answer")
+    connection = call(named["read_connection"], {}, "read", "unchanged")["data"]
+    must(served["contracts_read"] == 0 and connection["calls"] == 0,
+         f"step 2, nothing read of the venue before a want: {served}, {connection}")
+    listed = runner("instruments")
+    log("instruments, before any want:\n" + listed)
+    must(f"({VENUE})" not in listed and "KXSYNTH" not in listed,
+         f"step 2, no record minted before a want: {listed}")
+    for name, scheme, value, source in (("contract", "symbol", contract, "e2e-custodian"),
+                                        ("range", "symbol", NOT_BINARY, "e2e-custodian"),
+                                        ("usd", "iso4217", "USD", "")):
+        query = urllib.parse.urlencode({"name": name, "scheme": scheme, "value": value,
+                                        "source": source})
+        ids = read(f"/resolve?{query}")
+    subject, ranged, usd = ids["contract"], ids["range"], ids["usd"]
+
+    # 3. Licensed as the default says, and entitled.
+    runner("licence", DATASET, "kept=false", "retention_days=0", "display=true",
+           "personal_use=false", "note=Served, not kept, for the e2e's reader.")
+    runner("entitle", "--instance", "reader", DATASET, "note=The e2e's reader.")
+
+    # 4. Prices wanted, served to the reader, heard.
+    read(f"/follow?subject={subject}")
+    first = read(f"/prices?subject={subject}&dataset={DATASET}")
+    must(not first["prices"] and first["unanswered"],
+         f"step 4, a price not recorded is asked of the plugin: {first}")
+
+    def heard(row, kinds):
+        rows = [h for h in read("/heard")["heard"]
+                if h["row"] == row and h["dataset"] == DATASET and h["subject"] == subject]
+        return rows if {h.get("kind", "") for h in rows} >= kinds else None
+    prices = until(90, lambda: heard("price", set(STATED) if EXACT else set()),
+                   "step 4, the prices were not heard")
+    for row in prices:
+        amount = Decimal(row["amount"])
+        must((row["amount"] == STATED[row["kind"]] or not EXACT) and 0 <= amount <= 1,
+             f"step 4, {row['kind']} per contract as Kalshi stated it: {row}")
+        must(row["instrument_id"] == usd or (row["currency_code"] == "USD"
+                                             and row["instrument_id"] in ("", usd)),
+             f"step 4, in dollars, the dollar's record: {row}")
+        must(row["venue_id"] == "" and row["unconverted"] == [f"{VENUE}:venue"]
+             and row["raw"].startswith("responses/") and not row["business_date"],
+             f"step 4, the venue not held named as reported, its raw record: {row}")
+    listed = runner("instruments")
+    log("instruments, after the want:\n" + listed)
+    joined = [line for line in listed.splitlines() if line.startswith(subject)]
+    must(joined and f"symbol ({VENUE}): {contract}" in joined[0],
+         f"step 4, Kalshi's ticker joined to the custodian's record: {listed}")
+
+    # 5. Quotes wanted, served, heard: the NO side converted.
+    read(f"/quotes?subject={subject}&dataset={DATASET}")
+    quotes = until(90, lambda: heard("quote", {""}), "step 5, the quote was not heard")
+    quote = quotes[-1]
+    must("bid_amount" in quote or "ask_amount" in quote, f"step 5, a side quoted: {quote}")
+    for field, stated in QUOTE.items():
+        must(not EXACT or quote.get(field) == stated,
+             f"step 5, the quote's {field} as stated, the ask converted: {quote}")
+    if not EXACT and "ask_amount" in quote and "bid_amount" in quote:
+        must(Decimal(quote["bid_amount"]) <= Decimal(quote["ask_amount"]),
+             f"step 5, the ask from the NO side above the bid: {quote}")
+
+    # 6. Declined: Kalshi does not state the range market as binary.
+    read(f"/prices?subject={ranged}&dataset={DATASET}")
+
+    # 7. Parity: each read tool answers what its page shows.
+    connection = call(named["read_connection"], {}, "read", "unchanged")["data"]
+    mode = "synthetic" if EXACT else "recorded"
+    must(connection["mode"] == mode and connection["venue"] == NAME
+         and connection["venue_held"] is False and connection["calls"] > 0,
+         f"step 7, read_connection: {connection}")
+    shown = page(VENUE, "admin", "/")
+    must(f"{mode.capitalize()}: answers from files" in shown and NAME in shown,
+         "step 7, the Connection page shows the same")
+    served = call(named["read_datasets"], {}, "read", "unchanged")["data"]
+    must([d["dataset"] for d in served["datasets"]] == [DATASET]
+         and served["contracts_mapped"] == 1 and served["subjects_named"] == 1
+         and served["cash"] == "USD" and served["cash_instrument"] == usd
+         and served["payouts"] == ["1.0000 USD"] and served["recorded"] >= 3,
+         f"step 7, read_datasets: {served}")
+    shown = page(VENUE, "admin", "/datasets")
+    must("1 contract mapped for 1 subject" in shown and "each contract pays 1.0000 USD" in shown,
+         "step 7, the Datasets page shows the same")
+
+    # 8. Raw responses kept, and the lake's record: served, never kept.
+    kept = compose("exec", "-T", VENUE, "python", "-c",
+                   "from meridian import edge; "
+                   "print(sum(1 for p in (edge.storage_dir() / 'responses').rglob('*') if p.is_file()))")
+    must(int(kept.stdout.strip() or 0) >= 3, f"step 8, raw responses in storage: {kept.stdout}")
+    names = {subject: "CONTRACT", ranged: "RANGE", usd: "USD"}
+
+    def lake():
+        lines = compose("run", "--rm", "-T", "store", "lake").stdout.split("\n")
+        for instrument_id, name in names.items():
+            lines = [line.replace(instrument_id, name) for line in lines]
+        withdrawn = any(line.startswith(f"want|{DATASET}|withdrawn|") for line in lines)
+        declined = any(line.startswith(f"want|{DATASET}|declined|RANGE|") for line in lines)
+        return lines if withdrawn and declined else None
+    lines = until(240, lake, "step 8, the standing want was not withdrawn, or the range not "
+                             "declined")
+    log("store lake:\n" + "\n".join(lines))
+    must(not any(line.startswith(f"row|{DATASET}|") for line in lines),
+         f"step 8, no row of a dataset served, not kept, is kept: {lines}")
+    servings = [line.split("|") for line in lines if line.startswith(f"served|{DATASET}|")]
+    must(servings and all("CONTRACT" in s[4] and "reader" in s[6] for s in servings),
+         f"step 8, each serving of the contract's rows, to the reader: {servings}")
+    must(any(line.startswith(f"want|{DATASET}|asked|CONTRACT|") for line in lines),
+         f"step 8, the want asked: {lines}")
+    must(any(line.startswith(f"miss|{VENUE}|") for line in lines),
+         f"step 8, the venue's miss counted: {lines}")
+
+    print(f"e2e OK in {int(time.time() - started)}s: on core's plugin harness, the live "
+          "dataset of prices and quotes listed by the deployment admin's tool, served, not "
+          "kept by default; nothing asked of Kalshi and no record minted before a want; a "
+          "custodian's contract, known by its own symbol, read and named, Kalshi's ticker "
+          "joined to it, and its last trade, bid and ask recorded per contract in dollars, "
+          "served to the reader and heard; its quote with sizes, the ask the payout less the "
+          "best NO bid; the range market declined as not covered; read_connection and "
+          "read_datasets answering what the pages show, the payout one dollar; raw responses "
+          "in storage; and `store lake` keeping no row, each serving, the wants and the miss")
+
+
+def main():
+    open(LOG, "w").close()
+    try:
+        run()
+    except (Failed, subprocess.TimeoutExpired, KeyError, ValueError, IndexError) as failed:
+        print(f"e2e FAILED: {failed}; the run is in {LOG}, the components' logs in "
+              ".e2e/components.log", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
