@@ -9,7 +9,7 @@ unexport GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR \
         preview suite-same fmt install-hooks
 
 PLUGIN      := kalshi
-PAIR        := ../meridian-polymarket
+PAIR        := $(firstword $(wildcard ../plugin-polymarket ../meridian-polymarket) ../plugin-polymarket)
 DOCKER      := DOCKER_BUILDKIT=1 docker
 PY_VERSION  := 3.12
 CHECK       := meridian-$(PLUGIN)-check

@@ -1,4 +1,4 @@
-# meridian-kalshi
+# plugin-kalshi
 
 Kalshi's public market data for binary event contracts in an Open Meridian
 deployment's lake: a `dgm` plugin. For each contract a deployment's readers
@@ -8,7 +8,7 @@ every figure exactly as Kalshi stated it. No key: Kalshi's market data is
 public.
 
 It is the first half of the lake's second batch, with
-[meridian-polymarket](https://github.com/open-meridian/meridian-polymarket):
+[plugin-polymarket](https://github.com/open-meridian/plugin-polymarket):
 the two pass one `dgm` suite unchanged between them (meridian-design
 `plans/the-lake-prices-the-book.md`, row 20).
 

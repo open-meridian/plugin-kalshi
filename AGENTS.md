@@ -23,7 +23,7 @@ a deployment admin approves it.
   places, never through a `float`). `synthetic.py` answers instead of Kalshi
   in synthetic mode: the synthetic exchanges in `src/kalshi/synthetic/`, or
   a developer's recorded ones.
-- **Everything from there to the lake is shared with meridian-polymarket,
+- **Everything from there to the lake is shared with plugin-polymarket,
   byte for byte**: `market.py`, `dgm.py`, `contracts.py`, `raw.py`, `page.py`
   and its two templates, the tests `test_suite.py`, `test_dgm.py`,
   `test_page.py`, `test_raw.py` and `conftest.py`, and `e2e/reader.py`
@@ -33,7 +33,7 @@ a deployment admin approves it.
   `preview.py`, and `tests/venue_cases.py`, the one test module that knows
   which venue this is.
 - **The lake's rules, which the SDK's `dgm` suite holds** (`tests/test_suite.py`
-  runs it, unchanged from meridian-polymarket's): per subject wanted, never
+  runs it, unchanged from plugin-polymarket's): per subject wanted, never
   the whole venue -- read its record (`resolve_instrument`, W3.6) and name
   Kalshi's contract by its identifiers (Kalshi's ticker as a `symbol` whose
   source is `kalshi`, else another source's symbol that Kalshi answers as

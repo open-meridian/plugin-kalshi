@@ -38,7 +38,7 @@ from .market import Health, json_decimal
 from .raw import RawStore
 
 REST = "https://external-api.kalshi.com/trade-api/v2"
-USER_AGENT = "meridian-kalshi (+https://open-meridian.dev)"
+USER_AGENT = "plugin-kalshi (+https://open-meridian.dev)"
 
 #: What the plugin spends: five a second, in bursts of five.
 RATE_PER_SECOND = 5.0
