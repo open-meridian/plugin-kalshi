@@ -22,7 +22,7 @@ names the venue by the ID it resolves at run time (dgm.py), by Kalshi's MIC.
 
 **Its storage**: one kind of raw record, Kalshi's responses as received,
 kept a month by default (raw.py); the SDK declares the kind's two window
-settings. **Its settings**: synthetic mode, a developer's (synthetic.py). No
+settings. **Its settings**: sample data, a developer's (synthetic.py). No
 secret: Kalshi's public market data needs no key.
 """
 
@@ -32,19 +32,17 @@ from meridian import DatasetDeclaration, DatasetLicence, Declaration, RecordKind
 from .raw import KIND, LABEL, WINDOW_DAYS
 
 VENDOR = "Kalshi"
-SYNTHETIC = "synthetic"
+SAMPLE_DATA = "sample_data"
 
+#: Its settings, in the data role's order (spec/plugin-pages-follow-their-role):
+#: no environment and no credential -- Kalshi's public market data has one
+#: environment and needs no key -- so only sample data, a developer's.
 SETTINGS = [
-    meridian.Setting(
-        SYNTHETIC,
-        bool,
-        label="Synthetic mode",
-        default=False,
-        developer=True,
+    meridian.sample_data(
         description=(
-            "Answer from built-in synthetic Kalshi responses instead of calling Kalshi, "
-            "to develop and test without reaching it."
-        ),
+            "Answer from built-in made-up Kalshi responses, or a developer's recorded ones, "
+            "instead of calling Kalshi. Development deployments only."
+        )
     ),
 ]
 

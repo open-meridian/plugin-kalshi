@@ -1,10 +1,10 @@
 """`make e2e` and `make e2e-recorded`: the plugin end to end on core's plugin
-harness (contract v19), in synthetic mode, beside a reader (e2e/reader.py).
+harness (contracts v19 and v20), with sample data, beside a reader (e2e/reader.py).
 
 1. Launched: the plugin registers its catalogue; the deployment admin's tool
    lists its one dataset, `live`, of prices and quotes, on the UTC day ending
    at 00:00, pulled or streamed, its default licence served, not kept.
-2. Synthetic mode on: nothing is asked of the venue and no record minted
+2. Sample data on: nothing is asked of the venue and no record minted
    until the lake wants something -- never the venue's list. The reader then
    names a contract as a custodian's book holds it, by the custodian's own
    symbol, a market Kalshi does not state as binary the same way, and the
@@ -169,9 +169,9 @@ def run():
     must(licence["kept"] is False and licence["set_by_the_deployment"] is False,
          f"step 1, its default licence served, not kept: {licence}")
 
-    # 2. Synthetic mode: nothing asked, nothing minted; then the reader's
+    # 2. Sample data: nothing asked, nothing minted; then the reader's
     # records, as a custodian's book holds them.
-    runner("settings", "--instance", VENUE, "synthetic=true")
+    runner("settings", "--instance", VENUE, "sample_data=true")
     served = until(90, lambda: call(named["read_datasets"], {}, "read", "unchanged")["data"],
                    "step 2, read_datasets did not answer")
     connection = call(named["read_connection"], {}, "read", "unchanged")["data"]
@@ -239,20 +239,27 @@ def run():
 
     # 7. Parity: each read tool answers what its page shows.
     connection = call(named["read_connection"], {}, "read", "unchanged")["data"]
-    mode = "synthetic" if EXACT else "recorded"
-    must(connection["mode"] == mode and connection["venue"] == NAME
+    must(connection["mode"] == "Sample data" and connection["venue"] == NAME
+         and connection["credentials"] == [] and connection["sessions"] is None
          and connection["venue_held"] is False and connection["calls"] > 0,
          f"step 7, read_connection: {connection}")
     shown = page(VENUE, "admin", "/")
-    must(f"{mode.capitalize()}: answers from files" in shown and NAME in shown,
+    must("Sample data: the plugin answers from recorded responses" in shown
+         and "No key needed" in shown and "Does not stream" in shown and NAME in shown,
          "step 7, the Connection page shows the same")
     served = call(named["read_datasets"], {}, "read", "unchanged")["data"]
-    must([d["dataset"] for d in served["datasets"]] == [DATASET]
+    must([d["dataset"] for d in served["served"]] == [DATASET]
          and served["contracts_mapped"] == 1 and served["subjects_named"] == 1
          and served["cash"] == "USD" and served["cash_instrument"] == usd
-         and served["payouts"] == ["1.0000 USD"] and served["recorded"] >= 3,
+         and served["payouts"] == ["1.0000 USD"] and served["served"][0]["recorded"] >= 3,
          f"step 7, read_datasets: {served}")
+    def licensed():
+        rows = call(named["read_datasets"], {}, "read", "unchanged")["data"]["served"]
+        return rows if rows[0]["licensed"] else None
+    until(90, licensed, "step 7, read_datasets did not say the dataset licensed")
     shown = page(VENUE, "admin", "/datasets")
+    must("Not licensed yet" not in shown and "Licensed" in shown,
+         "step 7, the Datasets page says the dataset licensed")
     must("1 contract mapped for 1 subject" in shown and "each contract pays 1.0000 USD" in shown,
          "step 7, the Datasets page shows the same")
 
@@ -290,7 +297,7 @@ def run():
           "joined to it, and its last trade, bid and ask recorded per contract in dollars, "
           "served to the reader and heard; its quote with sizes, the ask the payout less the "
           "best NO bid; the range market declined as not covered; read_connection and "
-          "read_datasets answering what the pages show, the payout one dollar; raw responses "
+          "read_datasets answering what the pages show, the dataset licensed, the payout one dollar; raw responses "
           "in storage; and `store lake` keeping no row, each serving, the wants and the miss")
 
 

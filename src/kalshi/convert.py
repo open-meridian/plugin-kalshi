@@ -51,6 +51,14 @@ from .venue import BURST, NOT_FOUND, RATE_PER_SECOND, REST, Kalshi, VenueError
 
 VENUE = "kalshi"
 NAME = "Kalshi"
+#: What the venue entitles this plugin to: its public market data, no key.
+ENTITLED = "Public market data: a contract is read only for a subject the lake asked for"
+#: How the venue's two sides make one contract's quote, said on the Datasets
+#: page: Kalshi's book holds bids alone, YES and NO.
+VENDOR_NOTE = (
+    "A contract's quote is its best YES bid, and an ask of the payout less its best NO bid: "
+    "Kalshi's book holds bids alone, on both sides."
+)
 #: Kalshi in the venue master: its ISO 10383 MIC.
 VENUE_IDENTIFIERS: tuple[tuple[str, str, str], ...] = (("iso10383", "KLSH", ""),)
 CASH = Cash("USD", "currency", "iso4217", "USD", "US dollar")
@@ -192,7 +200,7 @@ def tick(of: Contract, body: Mapping[str, Any], raw_key: str, received_ns: int) 
 
 
 class KalshiMarket:
-    """Kalshi's market data, as the shared dgm asks for it."""
+    """Kalshi's market data, as the shared data plugin's work asks for it."""
 
     venue = VENUE
     name = NAME

@@ -6,7 +6,7 @@ value your book read it. It needs no key: Kalshi's market data is public.
 
 ## Its role
 
-It holds one role, `dgm`: it records prices and quotes into the lake, with
+It holds one role, `data`: it records prices and quotes into the lake, with
 Kalshi's markets named as your deployment's instruments, and keeps Kalshi's
 answers in its own storage. It shows no prices itself: reading them is for
 the reporting, portfolio, signal and other reading plugins.

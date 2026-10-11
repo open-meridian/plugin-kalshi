@@ -3,7 +3,7 @@ printed as one HTML file: for looking at them without a deployment.
 
     python -m kalshi.preview connection > preview/connection.html
     python -m kalshi.preview datasets > preview/datasets.html
-    python -m kalshi.preview datasets-search > preview/datasets-search.html
+    python -m kalshi.preview datasets-empty > preview/datasets-empty.html
 
 The page links the kit where the dashboard serves it, /.meridian/ui/<version>/,
 so serve it beside the kit to see it styled (meridian-ui's `make serve`);
@@ -15,8 +15,10 @@ Kalshi's ticker, one by a custodian's symbol) and one of a range market
 Kalshi does not state as binary, the venue answers from the synthetic
 exchanges this package carries, and the lake asks for the latest of each
 many times and keeps two current, as a reader would make it, so the
-Datasets page has wants to page through; `datasets-search` is the same page
-searched.
+Datasets page has wants to page through and search (the kit's search, in
+the browser). A deployment admin has licensed its live dataset (contract
+v20). `datasets-empty` is the page of a plugin just started, before the
+lake has asked anything: its next step, as a deployment admin sees it.
 """
 
 from __future__ import annotations
@@ -55,8 +57,6 @@ RECORDS = {
         ops.Identifier(scheme="symbol", value="KXSYNTHRANGE-26DEC", source="custodian")
     ],
 }
-#: What the Datasets page's search is shown with, as `datasets-search`.
-SEARCHED = "kept current"
 
 
 def _record(params: Any) -> Any:
@@ -103,18 +103,26 @@ async def _worked() -> Dgm:
         )
         lake.answer("ObservationsWanted", _delivering(want))
         await lake.receive(observations_wanted=dgm.on_want)
+    dgm.licensed = frozenset({dgm.dataset("live")})
     return dgm
+
+
+async def _fresh() -> Dgm:
+    """The plugin just started: nothing asked, nothing read of the venue."""
+    lake = Recorder("kalshi")
+    store = RawStore(Path(tempfile.mkdtemp(prefix="kalshi-preview-")))
+    client = Kalshi(store, transport=Synthetic(), clock_ns=lambda: NOW_NS)
+    return Dgm(lake, KalshiMarket(client, "synthetic"), ContractMap(), clock_ns=lambda: NOW_NS)
 
 
 def main(argv: list[str]) -> int:
     page = argv[0] if argv else "connection"
-    paths = {"connection": "/", "datasets": "/datasets", "datasets-search": "/datasets"}
+    paths = {"connection": "/", "datasets": "/datasets", "datasets-empty": "/datasets"}
     if page not in paths:
-        print(f"no page {page!r}: connection, datasets or datasets-search", file=sys.stderr)
+        print(f"no page {page!r}: connection, datasets or datasets-empty", file=sys.stderr)
         return 2
-    hold(asyncio.run(_worked()))
-    query = {"q": SEARCHED} if page == "datasets-search" else {}
-    answered = PageClient(pages).get(paths[page], "admin", **query)
+    hold(asyncio.run(_fresh() if page == "datasets-empty" else _worked()))
+    answered = PageClient(pages, deployment_admin=True).get(paths[page], "admin")
     sys.stdout.write(answered.text)
     return 0 if answered.status == 200 else 1
 
