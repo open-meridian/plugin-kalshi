@@ -58,6 +58,33 @@ NOT_BINARY = "KXSYNTHRANGE-26DEC"
 #: Kalshi prices in dollars: no stablecoin, so its cash is a currency code.
 STABLE = False
 
+# ── Outcomes (contract v23) ─────────────────────────────────────────────────
+
+#: Where each later stage of a contract's determination is stated: the same
+#: market as Kalshi answers it then, beside the package's exchanges.
+EXCHANGES = Path(__file__).parent / "exchanges"
+#: A market Kalshi has determined `yes`, settling at its payout: its outcome
+#: from its own side, at the stage Kalshi states, with Kalshi's word.
+RESOLVED = "KXSYNTH-26OCT-T4.00"
+RESOLVED_STAGE = "OUTCOME_STAGE_DETERMINED"
+WORD = ("kalshi:result", "yes")
+#: A market determined `no`, its settlement value not stated: nothing.
+RESOLVED_LOSER = "KXSYNTH-26OCT-T4.50"
+#: A market determined `scalar`, settling at part of its payout.
+PARTIAL, PARTIAL_VALUE = "KXSYNTH-26OCT-T4.10", "0.4500"
+#: A market past its close that Kalshi has not determined yet.
+PENDING = "KXSYNTH-26OCT-T3.75"
+#: The resolved market's later stages, each as Kalshi then answers it:
+#: disputed, then finalized and paid out at its `settlement_ts`.
+LATER = (
+    (EXCHANGES / "disputed", "OUTCOME_STAGE_DISPUTED", 0),
+    (EXCHANGES / "finalized", "OUTCOME_STAGE_FINAL", 1_791_572_700 * 1_000_000_000),
+)
+#: The suite's outcome cases, each as Kalshi presents it: determined, then
+#: disputed after it was recorded; and a scalar result.
+DETERMINED: str | None = RESOLVED
+DISPUTED: tuple[str, tuple[Path, ...]] | None = (RESOLVED, (EXCHANGES / "disputed",))
+
 #: The suite's cases Kalshi's one dataset never presents, each with why: the
 #: dataset publishes prices and quotes now, per contract, in dollars.
 NOT_PRESENTED = {

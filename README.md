@@ -4,25 +4,27 @@ Kalshi's public market data for binary event contracts in an Open Meridian
 deployment's lake: a data plugin. For each contract a deployment's readers
 ask about, it records the last trade's price and the best bid and offer, per
 contract in dollars, and the best bid and offer with their sizes as a quote,
-every figure exactly as Kalshi stated it. No key: Kalshi's market data is
-public.
+every figure exactly as Kalshi stated it; and, from contract v23, each such
+contract's outcome once Kalshi determines it. No key: Kalshi's market data
+is public.
 
 It is the first half of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket):
 the two pass one data suite unchanged between them (meridian-design
 `plans/the-lake-prices-the-book.md`, row 20).
 
-**Status.** 0.4.0, built on open-meridian 0.26.0 (contract v22), holding the
+**Status.** 0.5.0, built on open-meridian 0.27.0 (contract v23), holding the
 role `data`, and proven against the core it pins, by digest. Not
 released, uploaded or launched anywhere.
 
 ## What it does
 
-One dataset, declared from code in its catalogue (`declaration.py`):
+Two datasets, declared from code in its catalogue (`declaration.py`):
 
 | Dataset | Data | Modes | Day | Default licence |
 |---|---|---|---|---|
 | `<instance>:live` | each contract's last trade, best bid and ask as prices; its best bid and offer with sizes as a quote | pull, stream | `Etc/UTC`, ending at 00:00 | served, not kept |
+| `<instance>:outcomes` | each contract's outcome, a new version at each stage Kalshi states (contract v23) | push | `Etc/UTC`, ending at 00:00 (an outcome names no business date) | kept |
 
 - **Per subject wanted, never the whole venue.** A reader reads a price or
   quote nothing has recorded; the lake asks this plugin (a want). The plugin
@@ -60,6 +62,22 @@ One dataset, declared from code in its catalogue (`declaration.py`):
   deployment's own licence on the Data sources page, which replaces the
   default; the default claims nothing about Kalshi's terms, which are for
   the deployment admin and whoever uses the deployment to settle.
+- **Outcomes** (contract v23; meridian-design `plans/the-lake-prices-the-book.md`,
+  "vL1c"). For each contract a reader asked about, the plugin records its
+  outcome, unasked, once Kalshi determines it: from the contract's own side
+  -- it pays its full payout, pays nothing, or pays part -- with what one
+  contract settles at in dollars (Kalshi's `settlement_value_dollars`, or
+  the payout for `yes` and nothing for `no` where Kalshi states none), and
+  Kalshi's word, its `result` (`yes`, `no`, `scalar`), kept as reported.
+  Kalshi's statuses are its stages: `determined` determined, `disputed`
+  disputed, `amended` determined again, `finalized` final, with its
+  payout time, `settlement_ts`. One row key per contract
+  (`<ticker>:outcome`), each change a new version, nothing sent while
+  Kalshi's answer is unchanged. Kalshi states no time of determination, so
+  an outcome is valid from when the answer first stating it arrived. A
+  contract past its close is read again each minute until its final stage
+  is recorded. Kept by default, so a reader reads the version in force or
+  as of a time; paying holders is servicing's, not the lake's.
 - **The venue** is resolved in the platform's venue master by Kalshi's MIC
   (`iso10383` `KLSH`), and each row names its `VEN-` ID. A deployment that
   does not hold it gets each row with the venue left empty and the code
@@ -75,7 +93,9 @@ leaves no gap of trades to read back (`a-restarts-gap-backfilled`, contract
 v20, not presented): its live dataset is read again when it is next wanted.
 Contract v22's two calendar cases are not presented either: it reads no
 settlement calendar, and an event contract settles on its outcome, so it
-never computes a settlement date. Every other case passes, `reads-its-datasets-licences` among them: it reads
+never computes a settlement date. Contract v23's three outcome cases are
+mapped: an outcome recorded, a disputed outcome restated, a partial payout.
+Every other case passes, `reads-its-datasets-licences` among them: it reads
 which of its datasets a deployment admin has licensed, on start and each
 minute.
 
@@ -104,10 +124,12 @@ the reading roles.
   and what the plugin spends of it, its calls and the rate-limited ones
   waited out, the last call and the last error; "Stream" -- "Does not
   stream": it reads a contract when it is wanted, at most once a second.
-- **Datasets**: "Served" -- its dataset, its data, how its rows arrive, its
-  day, its default terms and whether a deployment admin has licensed it
+- **Datasets**: "Served" -- each dataset (`live`, `outcomes`), its data, how
+  its rows arrive, its day, its default terms and whether a deployment admin
+  has licensed it
   ("Licensed" or "Not licensed yet", read from the deployment from contract
-  v20), what it recorded and declined and when it last recorded; "Wants" --
+  v20), what it recorded and declined and when it last recorded, each
+  dataset's own; "Wants" --
   the wants it heard and the standing wants it keeps current, searched and
   paged by the kit's `om-pager`; "Subjects" -- whether the deployment lets
   it read an instrument's record; then a section under Kalshi's name: the
@@ -148,9 +170,10 @@ reader (`e2e/reader.py`, holding `custody` to name a custodian's records,
 `reporting` to hear prices and `signal` to hear quotes): the catalogue
 listed, nothing asked of Kalshi before a want, a custodian's contract read
 and named, its prices and quote recorded in dollars -- the ask from the NO
-side -- served to the reader and heard, a range market declined, both read
-tools answering what the pages show, and `store lake` keeping no row
-(`e2e/run.py` says each step).
+side -- served to the reader and heard, a range market declined, a
+determined market's outcome recorded, kept, heard and read back, both read
+tools answering what the pages show, and `store lake` keeping no row of the
+live dataset and the outcome's one (`e2e/run.py` says each step).
 
     docker run --rm --entrypoint python -v "$PWD/e2e":/e2e:ro \
         -v "$PWD/recordings":/recordings kalshi:local /e2e/record.py TICKER ...

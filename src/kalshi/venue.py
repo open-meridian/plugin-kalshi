@@ -1,7 +1,8 @@
 """Kalshi's public market data: the one module that speaks to it.
 
 REST at external-api.kalshi.com/trade-api/v2: `/markets/{ticker}` (one
-market, asked only for a subject the lake wants), `/markets/{ticker}/orderbook`
+market, asked only for a subject the lake wants, and asked again for its
+outcome once it is past its close), `/markets/{ticker}/orderbook`
 (its resting bids, YES and NO) and `/markets/trades?ticker=` (its last trade).
 No key: nothing here holds a credential, and nothing is sent but the
 request. The standard library's HTTP client; the plugin depends on nothing
@@ -202,9 +203,10 @@ class Kalshi:
         self.health.last_failed_ns = self.clock_ns()
         self.health.last_error = why
 
-    def market(self, ticker: str) -> Fetched:
-        """One market, by its ticker."""
-        return self._get("market", ticker, f"/markets/{urllib.parse.quote(ticker)}")
+    def market(self, ticker: str, live: bool = False) -> Fetched:
+        """One market, by its ticker; `live`, read again for its outcome, kept
+        as a line of the day's live responses, added only when it changed."""
+        return self._get("market", ticker, f"/markets/{urllib.parse.quote(ticker)}", live=live)
 
     def orderbook(self, ticker: str) -> Fetched:
         """A market's resting bids, YES and NO."""
