@@ -48,6 +48,17 @@ Kalshi's book holds bids on both sides of a contract. A bid for NO at 56
 cents is an offer to sell YES at 44 cents, so the plugin records the
 contract's ask as one dollar less the best NO bid.
 
+## Outcomes
+
+Once Kalshi determines a contract a reader asked about, the plugin records
+its outcome: whether the contract pays its dollar, pays nothing, or pays
+part of it, what one contract settles at, and Kalshi's own word for the
+result (yes, no or scalar). Each stage Kalshi states -- determined,
+disputed, amended, finalized -- is a new version of the same outcome, so
+your readers see a disputed result as it changed, and the final one with
+when Kalshi paid out. Outcomes are kept by default. Paying the holders of a
+position is not the plugin's: it records what Kalshi determined.
+
 ## What it never makes up
 
 - A figure is recorded exactly as Kalshi stated it, never rounded and never
@@ -61,5 +72,6 @@ contract's ask as one dollar less the best NO bid.
 Kalshi's answers, as received, in the storage your deployment gives the
 plugin, for 30 days by default, each price naming the answer it came from.
 Past that window, a day's answers are archived, kept or deleted as you set
-it. Its dataset's default licence is served, not kept: the lake keeps none of
-its rows unless your deployment's licence says otherwise.
+it. Its live dataset's default licence is served, not kept: the lake keeps
+none of its prices unless your deployment's licence says otherwise. Its
+outcomes dataset is kept by default.

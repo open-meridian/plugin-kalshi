@@ -21,6 +21,19 @@ Kalshi's vocabulary is read.
   (`120.00`, a fractional contract possible); an older answer states prices
   in whole cents (`yes`, `43`), converted to dollars at the edge by moving
   the point, never through a float.
+- **Its outcome** (contract v23; the lake plan's "vL1c") is read from the
+  same market answer. Kalshi's statuses run `closed`, `determined`, then
+  (`disputed`, `amended`), then `finalized`
+  (docs.kalshi.com, "Market lifecycle"): `determined` is the stage
+  determined, `disputed` disputed, `amended` determined again -- a new
+  version -- and `finalized` final; before `determined` there is none.
+  What one contract settles at is its `settlement_value_dollars`, Kalshi's
+  YES-side settlement value, the contract the plugin records; where Kalshi
+  states none, `result` `yes` settles at the payout and `no` at nothing.
+  Kalshi's word is its `result` (`yes`, `no` or `scalar`), kept as
+  reported; its payout time `settlement_ts`, set when finalized. Kalshi
+  states no time of determination, so the determination is valid from when
+  the answer first stating it arrived.
 - **The last trade** is `/markets/trades`' first, its `yes_price_dollars` (or
   `yes_price` in cents) at its `created_time`, its `trade_id` its identity.
   Kalshi's book states no time, so a quote is valid from when its answer
@@ -36,11 +49,15 @@ from decimal import Decimal
 from typing import Any
 
 from .market import (
+    DETERMINED,
+    DISPUTED,
+    FINAL,
     NANOS_PER_SECOND,
     Cash,
     Contract,
     Endpoint,
     Limits,
+    Resolution,
     Session,
     Tick,
     Top,
@@ -64,6 +81,11 @@ VENUE_IDENTIFIERS: tuple[tuple[str, str, str], ...] = (("iso10383", "KLSH", ""),
 CASH = Cash("USD", "currency", "iso4217", "USD", "US dollar")
 #: The statuses in which Kalshi trades a market.
 TRADING = frozenset({"active", "open"})
+#: Kalshi's statuses that state a determination, as the contract's stages.
+STAGES = {"determined": DETERMINED, "amended": DETERMINED, "disputed": DISPUTED,
+          "finalized": FINAL}  # fmt: skip
+#: Where Kalshi's word for a determination is, as reported.
+RESULT = "kalshi:result"
 
 LIMITS = Limits(
     allowed="Kalshi limits its API's requests per account tier; its market data needs no key",
@@ -99,8 +121,36 @@ def _when(text: object) -> int:
         return 0
 
 
-def contract(body: Mapping[str, Any], raw_key: str) -> Contract:
-    """One market, from `/markets/{ticker}`'s `market`."""
+def resolution(body: Mapping[str, Any], payout: Decimal | None) -> Resolution | None:
+    """A market's determination, at the stage its status states; None before
+    Kalshi determines it."""
+    stage = STAGES.get(str(body.get("status") or ""))
+    if stage is None:
+        return None
+    result = str(body.get("result") or "")
+    stated = body.get("settlement_value_dollars")
+    value = number(stated) if stated not in (None, "") else None
+    unread: list[Unread] = []
+    if stated not in (None, "") and value is None:
+        unread.append(Unread("market.settlement_value_dollars", str(stated)))
+    elif value is None and result == "yes":
+        value = payout
+    elif value is None and result == "no":
+        value = Decimal(0)
+    return Resolution(
+        stage=stage,
+        value=value,
+        scheme=RESULT if result else "",
+        word=result,
+        text=result,
+        settled_at_ns=_when(body.get("settlement_ts")) if stage == FINAL else 0,
+        unread=tuple(unread),
+    )
+
+
+def contract(body: Mapping[str, Any], raw_key: str, received_ns: int = 0) -> Contract:
+    """One market, from `/markets/{ticker}`'s `market`, with its
+    determination where Kalshi states one."""
     unread: list[Unread] = []
     stated = body.get("notional_value_dollars")
     payout = number(stated)
@@ -118,6 +168,8 @@ def contract(body: Mapping[str, Any], raw_key: str) -> Contract:
         market=str(body.get("event_ticker") or ""),
         raw_key=raw_key,
         unread=tuple(unread),
+        resolution=resolution(body, payout),
+        read_at_ns=received_ns,
     )
 
 
@@ -212,14 +264,16 @@ class KalshiMarket:
         address = REST if mode == "live" else f"{mode}: no call leaves the deployment"
         self.session = Session(
             mode=mode,
-            endpoints=(Endpoint("REST", address, "a market, its book and its last trade"),),
+            endpoints=(
+                Endpoint("REST", address, "a market and its outcome, its book and its last trade"),
+            ),
             limits=LIMITS,
             health=client.health,
         )
 
-    def contract(self, code: str) -> Contract | None:
+    def contract(self, code: str, watching: bool = False) -> Contract | None:
         try:
-            fetched = self.client.market(code)
+            fetched = self.client.market(code, live=watching)
         except VenueError as refused:
             if refused.status == NOT_FOUND:
                 return None
@@ -227,7 +281,7 @@ class KalshiMarket:
         body = fetched.value.get("market") if isinstance(fetched.value, Mapping) else None
         if not isinstance(body, Mapping) or "ticker" not in body:
             return None
-        return contract(body, fetched.raw_key)
+        return contract(body, fetched.raw_key, fetched.received_at_ns)
 
     def last(self, of: Contract) -> Tick:
         fetched = self.client.trades(of.code)

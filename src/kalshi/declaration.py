@@ -9,12 +9,20 @@ upload`:
   once a second per subject, pulled for the latest or kept current for a
   standing want. Its day is the UTC day (`day_time_zone` `Etc/UTC`,
   `day_end_minute` 0): Kalshi trades around the clock and states no close.
+- `outcomes` (contract v23): each contract's outcome as Kalshi determines
+  it, a new version at each stage it states, recorded unasked (`push`) for
+  each contract a subject the lake asked for is, a contract past its close
+  read again each minute until its outcome is final. It names no business
+  date; its day is declared as the live dataset's.
 
-**Its licence default is served, not kept** (the plan's row 20): the lake
-hands each row to the readers waiting for it and keeps none. The default
-claims nothing about Kalshi's terms, which the deployment admin settles with
+**Its licence defaults** (the plan's row 20): `live` is served, not kept: the
+lake hands each row to the readers waiting for it and keeps none. `outcomes`
+is kept: an outcome is restated version by version and read back by the
+version in force or as of a time, which a dataset not kept cannot answer
+(a plugin's choice within contract v23, approved 2026-10-13). Neither default
+claims anything about Kalshi's terms, which the deployment admin settles with
 whoever uses the deployment; the admin states the deployment's licence on
-the Data sources page, which replaces this one.
+the Data sources page, which replaces it.
 
 `venue_id` is empty: the venue master's ID for Kalshi is minted by the
 platform, not known to the code a catalogue is declared from, so each row
@@ -55,6 +63,17 @@ CATALOGUE = [
         cadence=1,
         history=0,
         licence_default=DatasetLicence(kept=False),
+        day_time_zone="Etc/UTC",
+        day_end_minute=0,
+    ),
+    DatasetDeclaration(
+        key="outcomes",
+        vendor=VENDOR,
+        data_types=["meridian.v1.Outcome"],
+        modes=["push"],
+        cadence=60,
+        history=0,
+        licence_default=DatasetLicence(kept=True),
         day_time_zone="Etc/UTC",
         day_end_minute=0,
     ),

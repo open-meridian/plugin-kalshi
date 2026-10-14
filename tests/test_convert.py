@@ -108,3 +108,57 @@ def test_the_synthetic_exchange_reads_as_the_cases_say() -> None:
     assert market.cash.currency_code == "USD" and market.venue_identifiers == (
         ("iso10383", "KLSH", ""),
     )
+
+
+# ── Its outcome (contract v23) ──────────────────────────────────────────────
+
+
+def _resolution(**market: Any) -> Any:
+    return convert.resolution(market, Decimal("1.0000"))
+
+
+def test_each_status_stating_a_determination_is_its_stage() -> None:
+    stages = {status: getattr(_resolution(status=status, result="yes"), "stage", None)
+              for status in ("active", "closed", "determined", "disputed", "amended",
+                             "finalized")}  # fmt: skip
+    assert stages == {"active": None, "closed": None, "determined": "determined",
+                      "disputed": "disputed", "amended": "determined",
+                      "finalized": "final"}  # fmt: skip
+
+
+def test_the_settlement_value_stated_is_what_one_contract_settles_at() -> None:
+    said = _resolution(status="determined", result="scalar", settlement_value_dollars="0.4500")
+    assert (str(said.value), said.scheme, said.word, said.text) == (
+        "0.4500",
+        "kalshi:result",
+        "scalar",
+        "scalar",
+    )
+    assert said.determined_at_ns == 0, "Kalshi states no time of determination"
+
+
+def test_yes_and_no_with_no_value_stated_settle_at_the_payout_and_at_nothing() -> None:
+    assert _resolution(status="determined", result="yes").value == Decimal("1.0000")
+    assert _resolution(status="determined", result="no").value == 0
+
+
+def test_a_value_that_does_not_read_is_kept_as_sent() -> None:
+    said = _resolution(status="determined", result="yes", settlement_value_dollars="1.00.00")
+    assert said.value is None
+    assert said.unread[0].field == "market.settlement_value_dollars"
+
+
+def test_finalized_carries_its_payout_time_and_nothing_before() -> None:
+    final = _resolution(status="finalized", result="yes", settlement_ts="2026-10-09T19:05:00Z")
+    assert final.settled_at_ns == 1_791_572_700 * 1_000_000_000
+    early = _resolution(status="determined", result="yes", settlement_ts="2026-10-09T19:05:00Z")
+    assert early.settled_at_ns == 0
+
+
+def test_a_market_is_read_with_its_determination_and_when_its_answer_arrived() -> None:
+    market = venue.market()
+    resolved = market.contract(venue.RESOLVED)
+    assert resolved is not None and resolved.resolution is not None
+    assert resolved.read_at_ns == venue.NOW_NS and not resolved.tradable
+    active = market.contract(venue.BASE)
+    assert active is not None and active.resolution is None

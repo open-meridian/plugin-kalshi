@@ -53,6 +53,17 @@ a deployment admin approves it.
   bars, trades, a currency's rate, a security's price, a stablecoin) is
   named in `not_presented` with why (`tests/venue_cases.py`); every other
   case is mapped.
+- **Outcomes** (contract v23, the lake plan's "vL1c"): `dgm.record_outcomes`
+  records each served contract's determination in the `outcomes` dataset,
+  unasked, from the contract's own side (`pays`, `pays_nothing`,
+  `pays_part`, by its settlement value against its payout), the venue's
+  word kept as reported, one row key per contract (`<code>:outcome`), a new
+  version only when the venue's statement changes (the contract map keeps
+  what was last recorded). `convert.resolution` reads Kalshi's statuses into
+  the stages (`determined`, `amended` → determined; `disputed`; `finalized`
+  → final, with `settlement_ts`); Kalshi states no time of determination, so
+  it is valid from when the answer first stating it arrived. No business
+  date; no `want_id`.
 - **A data plugin shows no market data** (ruled 2026-10-03). Its pages are
   the data role's (meridian-design `spec/plugin-pages-follow-their-role.md`):
   Connection and Datasets, under Manage alone, extending the SDK's role
