@@ -26,12 +26,14 @@ the Data sources page, which replaces it.
 
 `venue_id` is empty: the venue master's ID for Kalshi is minted by the
 platform, not known to the code a catalogue is declared from, so each row
-names the venue by the ID it resolves at run time (dgm.py), by Kalshi's MIC.
+names the venue by the ID it resolves at run time (the SDK's
+`meridian.roles.data.event_contracts.Feed`), by Kalshi's MIC.
 
 **Its storage**: one kind of raw record, Kalshi's responses as received,
-kept a month by default (raw.py); the SDK declares the kind's two window
-settings. **Its settings**: sample data, a developer's (synthetic.py). No
-secret: Kalshi's public market data needs no key.
+kept a month by default (`KIND`, kept by the SDK's
+`meridian.edge.RawStore`); the SDK declares the kind's two window settings.
+**Its settings**: sample data, a developer's (synthetic.py). No secret:
+Kalshi's public market data needs no key.
 """
 
 import meridian
@@ -39,6 +41,13 @@ from meridian import DatasetDeclaration, DatasetLicence
 
 VENDOR = "Kalshi"
 SAMPLE_DATA = "sample_data"
+
+#: Its one kind of raw record, Kalshi's responses as received: a month of
+#: them by default, enough to re-convert a row a person questions. An admin
+#: sets the window in Settings.
+KIND = "responses"
+LABEL = "Raw responses"
+WINDOW_DAYS = 30
 
 #: Its settings, in the data role's order (spec/plugin-pages-follow-their-role):
 #: no environment and no credential -- Kalshi's public market data has one

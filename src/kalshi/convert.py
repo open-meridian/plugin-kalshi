@@ -1,4 +1,5 @@
-"""Kalshi's answers, read into the venue's values (market.py): the one place
+"""Kalshi's answers, read into the venue's values (the SDK's
+`meridian.roles.data.event_contracts`): the one place
 Kalshi's vocabulary is read.
 
 - **The cash** is the US dollar, by its ISO 4217 code: Kalshi's prices and
@@ -48,22 +49,18 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
 
-from .market import (
+from meridian.roles.data import NANOS_PER_SECOND, Endpoint, Limits, Session, Unread, number
+from meridian.roles.data.event_contracts import (
     DETERMINED,
     DISPUTED,
     FINAL,
-    NANOS_PER_SECOND,
     Cash,
     Contract,
-    Endpoint,
-    Limits,
     Resolution,
-    Session,
     Tick,
     Top,
-    Unread,
-    number,
 )
+
 from .venue import BURST, NOT_FOUND, RATE_PER_SECOND, REST, Kalshi, VenueError
 
 VENUE = "kalshi"
