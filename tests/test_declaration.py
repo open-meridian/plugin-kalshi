@@ -10,7 +10,8 @@ from pathlib import Path
 
 from meridian.v1 import sidecar_pb2
 
-from kalshi.declaration import CATALOGUE, DECLARATION, SAMPLE_DATA
+from kalshi.declaration import DECLARATION
+from kalshi.declared import CATALOGUE, SAMPLE_DATA
 
 
 def test_one_live_dataset_of_prices_and_quotes_served_not_kept() -> None:

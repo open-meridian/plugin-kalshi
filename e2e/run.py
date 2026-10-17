@@ -161,7 +161,7 @@ def recorded_contract(directory):
 def run():
     started = time.time()
     contract = recorded_contract(RECORDED[0]) if RECORDED else CONTRACT
-    compose("down", "-v", "--remove-orphans", check=False)
+    compose("--profile", "runner", "down", "-v", "--remove-orphans", check=False)
     compose("up", "-d")
     for instance in (VENUE, "reader"):
         runner("ready", "--instance", instance)
@@ -206,8 +206,12 @@ def run():
                                         ("range", "symbol", NOT_BINARY, "e2e-custodian"),
                                         ("resolved", "symbol", RESOLVED, "e2e-custodian"),
                                         ("usd", "iso4217", "USD", "")):
+        # Contract v24 (W3.7): the custodian states the contract's description
+        # and currency beside its symbol, the minimum a record is minted from.
+        stated = {"description": f"The e2e custodian's event contract {value}",
+                  "currency": "USD"} if source else {}
         query = urllib.parse.urlencode({"name": name, "scheme": scheme, "value": value,
-                                        "source": source})
+                                        "source": source, **stated})
         ids = read(f"/resolve?{query}")
     subject, ranged, resolved, usd = ids["contract"], ids["range"], ids["resolved"], ids["usd"]
 
