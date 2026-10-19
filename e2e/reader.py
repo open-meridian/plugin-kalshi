@@ -24,7 +24,9 @@ runner (`page --instance reader --level read PATH`):
   /prices?subject=ID&dataset=D[&kind=K]
   /quotes?subject=ID&dataset=D         one read: its rows, and what it left
                                        unanswered and why;
-  /outcomes?subject=ID                 the outcomes in force (contract v23).
+  /outcomes?subject=ID                 the outcomes in force (contract v23);
+  /groups?subject=ID                   the event groups holding it, as in
+                                       force now (contract v26, W3.30).
 """
 
 import asyncio
@@ -90,6 +92,16 @@ def outcome_json(outcome):
             **money_json("", outcome.settlement_value)}  # fmt: skip
 
 
+def group_json(group):
+    return {"event_group_id": group.event_group_id, "venue_id": group.venue_id,
+            "venue_event_ref": group.venue_event_ref, "title": group.title,
+            "members": list(group.member_instrument_ids),
+            "mutually_exclusive": ops.EventGroupFlag.Name(group.mutually_exclusive),
+            "exhaustive": ops.EventGroupFlag.Name(group.exhaustive),
+            "series_id": group.series_id, "version": group.version,
+            "provisional": group.provisional}  # fmt: skip
+
+
 def unanswered_json(answer):
     return [{"subject": u.subject.entity_id, "dataset": u.dataset,
              "reason": ops.UnansweredReason.Name(u.reason)} for u in answer.unanswered]  # fmt: skip
@@ -145,6 +157,9 @@ class Reader:
             answer = await self.plugin.list_outcomes(
                 subjects=[ops.SubjectRef(entity_id=s) for s in query["subject"]])
             return {"outcomes": [outcome_json(o) for o in answer.outcomes]}
+        if path == "/groups":
+            answer = await self.plugin.list_event_groups(instrument_ids=query["subject"])
+            return {"groups": [group_json(g) for g in answer.event_groups]}
         asked = {"subjects": [ops.SubjectRef(entity_id=s) for s in query["subject"]]}
         if one("dataset"):
             asked["sources"] = SourceChoice(named=[one("dataset")])

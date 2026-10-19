@@ -163,3 +163,57 @@ def test_a_market_is_read_with_its_determination_and_when_its_answer_arrived() -
     assert resolved.read_at_ns == venue.NOW_NS and not resolved.tradable
     active = market.contract(venue.BASE)
     assert active is not None and active.resolution is None
+
+
+# ── Contract v26: events and a range market's bounds ────────────────────────
+
+
+def _bounds(**market: Any) -> Any:
+    unread: list[Any] = []
+    return convert.bounds(market, unread), unread
+
+
+def test_a_one_sided_strike_is_one_bound_inclusive_as_its_type_says() -> None:
+    (floor, cap), _ = _bounds(strike_type="greater", floor_strike=Decimal("4.00"))
+    assert (str(floor.value), floor.inclusive, cap) == ("4.00", False, None)
+    (floor, cap), _ = _bounds(strike_type="greater_or_equal", floor_strike=Decimal("4.00"))
+    assert floor.inclusive is True and cap is None
+    (floor, cap), _ = _bounds(strike_type="less", cap_strike=Decimal("84"))
+    assert (floor, str(cap.value), cap.inclusive) == (None, "84", False)
+    (floor, cap), _ = _bounds(strike_type="less_or_equal", cap_strike=Decimal("84"))
+    assert floor is None and cap.inclusive is True
+
+
+def test_a_range_is_both_bounds_inclusive_and_another_strike_none() -> None:
+    (floor, cap), _ = _bounds(strike_type="between", floor_strike=84, cap_strike=85)
+    assert (str(floor.value), floor.inclusive, str(cap.value), cap.inclusive) == (
+        "84", True, "85", True,
+    )  # fmt: skip
+    assert _bounds(strike_type="functional", functional_strike="x")[0] == (None, None)
+    assert _bounds(strike_type="greater")[0] == (None, None), "no strike stated, no bound"
+
+
+def test_a_strike_that_does_not_read_is_kept_as_sent() -> None:
+    (floor, _), unread = _bounds(strike_type="greater", floor_strike="four")
+    assert floor is None and [(u.field, u.text) for u in unread] == [
+        ("market.floor_strike", "four")
+    ]
+
+
+def test_an_event_is_its_markets_exclusive_as_kalshi_states_never_exhaustive() -> None:
+    exclusive = venue.EVENT
+    assert exclusive.ref == venue.EXCLUSIVE and exclusive.series == "KXSYNTHHIGH"
+    assert exclusive.members == (venue.LOWER_TAIL, venue.RANGE, venue.UPPER_TAIL)
+    assert (exclusive.mutually_exclusive, exclusive.exhaustive) == (True, None)
+    assert exclusive.raw_key and exclusive.valid_from_ns == venue.NOW_NS
+    ladder = venue.EVENT_PLACEHOLDERS
+    assert (ladder.mutually_exclusive, ladder.exhaustive) == (False, None)
+    assert len(ladder.members) == 4 and venue.BASE in ladder.members
+
+
+def test_an_event_naming_no_market_is_none_and_old_answers_are_read() -> None:
+    assert convert.event({"event_ticker": "KX", "markets": []}, "k") is None
+    assert convert.event({"markets": [{"ticker": "KX-1"}]}, "k") is None
+    said = convert.event({"event_ticker": "KX", "markets": [{"ticker": "KX-1"}]}, "k")
+    assert said is not None and said.mutually_exclusive is None, "not stated, never false"
+    assert venue.market().event("KXNOSUCH") is None  # type: ignore[attr-defined]

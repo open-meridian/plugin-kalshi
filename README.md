@@ -12,10 +12,10 @@ It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.30.0), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.31.0), never copied
 between them.
 
-**Status.** 0.7.0, built on open-meridian 0.30.0 (contract v25: its whole declaration, and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+**Status.** 0.8.0, built on open-meridian 0.31.0 (contract v26: each contract's event reported as a group; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
 role `data`, and proven against the core it pins, by digest. Not
 released, uploaded or launched anywhere.
 
@@ -80,6 +80,23 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
   contract past its close is read again each minute until its final stage
   is recorded. Kept by default, so a reader reads the version in force or
   as of a time; paying holders is servicing's, not the lake's.
+- **Events** (contract v26; meridian-design
+  `spec/the-contract-gaps-v26-and-v27-close.md`, A1 to A9; W3.29). For each
+  contract it serves, the plugin reads the event Kalshi groups it in
+  (`/events/{event_ticker}`, its markets nested) and reports it
+  (`ReportEventGroup`, the SDK's `Feed.report_event`): its markets, each
+  named as the deployment's record by its ticker, its series
+  (`series_ticker`), and Kalshi's `mutually_exclusive` -- true only where at
+  most one market can resolve YES. Kalshi never states whether an event's
+  markets are exhaustive, so that flag is reported not stated, never false.
+  The platform matches or mints the group (`EVG-`), the deployment keeping
+  its own `LCL-` group meanwhile. Each event is read once its first contract
+  is served and again every ten minutes, and reported again only where
+  Kalshi states it otherwise, which makes a new version; an event a member
+  of which does not resolve is held back and read again. A range market's
+  bounds (`strike_type` with `floor_strike` and `cap_strike`) are read in
+  `convert.py` and wait for an SDK that keeps them on the contract
+  (open-meridian 0.31.1).
 - **The venue** is resolved in the platform's venue master by Kalshi's MIC
   (`iso10383` `KLSH`), and each row names its `VEN-` ID. A deployment that
   does not hold it gets each row with the venue left empty and the code
@@ -97,6 +114,11 @@ Contract v22's two calendar cases are not presented either: it reads no
 settlement calendar, and an event contract settles on its outcome, so it
 never computes a settlement date. Contract v23's three outcome cases are
 mapped: an outcome recorded, a disputed outcome restated, a partial payout.
+Contract v26's are mapped too: `reports-an-event-group` on an event Kalshi
+states mutually exclusive, `reports-a-flag-the-venue-does-not-state` on one
+it states is not (exhaustiveness, which Kalshi never states, reported not
+stated), and `queries-the-lake-within-bounds` (the SDK's producer);
+`hears-and-reads-an-event-group` is answered by the SDK.
 Every other case passes, `reads-its-datasets-licences` among them: it reads
 which of its datasets a deployment admin has licensed, on start and each
 minute.
@@ -172,7 +194,8 @@ reader (`e2e/reader.py`, holding `custody` to name a custodian's records,
 `reporting` to hear prices and `signal` to hear quotes): the catalogue
 listed, nothing asked of Kalshi before a want, a custodian's contract read
 and named, its prices and quote recorded in dollars -- the ask from the NO
-side -- served to the reader and heard, a range market declined, a
+side -- served to the reader and heard, its event reported and read back
+as a group, a range market declined, a
 determined market's outcome recorded, kept, heard and read back, both read
 tools answering what the pages show, and `store lake` keeping no row of the
 live dataset and the outcome's one (`e2e/run.py` says each step).

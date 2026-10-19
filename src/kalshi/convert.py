@@ -35,6 +35,23 @@ Kalshi's vocabulary is read.
   reported; its payout time `settlement_ts`, set when finalized. Kalshi
   states no time of determination, so the determination is valid from when
   the answer first stating it arrived.
+- **A range market's bounds** (contract v26; the gaps spec's A4) are its
+  `floor_strike` and `cap_strike` as its `strike_type` reads them
+  (docs.kalshi.com, "Get Market"): `greater` a floor not inclusive,
+  `greater_or_equal` one inclusive, `less` and `less_or_equal` a cap the
+  same way, an open tail one bound only; `between` both, each inclusive --
+  Kalshi's floor is the least and its cap the greatest value settling YES.
+  Any other strike (`functional`, `custom`, `structured`) states no bound.
+  Kalshi states no unit for a strike, so `bound_unit` is left empty: the
+  unit is in the market's words, never guessed.
+- **The event** (contract v26; W3.29) is `/events/{event_ticker}`'s, its
+  markets nested: its ticker its reference, its `title` its words, its
+  markets its members by ticker, its `series_ticker` its series. Kalshi
+  states `mutually_exclusive` -- true only where at most one market can
+  resolve YES (`collateral_return_type` `MECNET`) -- and nothing of whether
+  its markets are exhaustive, so that flag is not stated, never false (the
+  gaps spec's A2). An event unchanged keeps the time its answer first
+  arrived, which is when the grouping is reported valid from.
 - **The last trade** is `/markets/trades`' first, its `yes_price_dollars` (or
   `yes_price` in cents) at its `created_time`, its `trade_id` its identity.
   Kalshi's book states no time, so a quote is valid from when its answer
@@ -54,8 +71,10 @@ from meridian.roles.data.event_contracts import (
     DETERMINED,
     DISPUTED,
     FINAL,
+    Bound,
     Cash,
     Contract,
+    Event,
     Resolution,
     Tick,
     Top,
@@ -145,10 +164,48 @@ def resolution(body: Mapping[str, Any], payout: Decimal | None) -> Resolution | 
     )
 
 
+#: Kalshi's one-sided strikes: which bound each states, and whether it is
+#: inclusive.
+ONE_SIDED = {"greater": ("floor", False), "greater_or_equal": ("floor", True),
+             "less": ("cap", False), "less_or_equal": ("cap", True)}  # fmt: skip
+
+
+def _strike(body: Mapping[str, Any], name: str, unread: list[Unread]) -> Decimal | None:
+    stated = body.get(name)
+    if stated in (None, ""):
+        return None
+    value = number(stated)
+    if value is None:
+        unread.append(Unread(f"market.{name}", str(stated)))
+    return value
+
+
+def bounds(body: Mapping[str, Any], unread: list[Unread]) -> tuple[Bound | None, Bound | None]:
+    """A range market's floor and cap as its `strike_type` reads its strikes;
+    neither for a strike that states no bound."""
+    kind = str(body.get("strike_type") or "")
+    floor, cap = _strike(body, "floor_strike", unread), _strike(body, "cap_strike", unread)
+    if kind in ONE_SIDED:
+        side, inclusive = ONE_SIDED[kind]
+        value = floor if side == "floor" else cap
+        if value is None:
+            return None, None
+        bound = Bound(value, inclusive)
+        return (bound, None) if side == "floor" else (None, bound)
+    if kind == "between" and floor is not None and cap is not None:
+        return Bound(floor, True), Bound(cap, True)
+    return None, None
+
+
 def contract(body: Mapping[str, Any], raw_key: str, received_ns: int = 0) -> Contract:
     """One market, from `/markets/{ticker}`'s `market`, with its
-    determination where Kalshi states one."""
+    determination where Kalshi states one, and its bounds where it is a
+    range."""
     unread: list[Unread] = []
+    # Read, but not yet on the contract: open-meridian 0.31.0's contract map
+    # cannot keep a bound (its save writes the Decimal as is), and sends a
+    # bound on no row; set `floor` and `cap` below once an SDK keeps them.
+    bounds(body, unread)
     stated = body.get("notional_value_dollars")
     payout = number(stated)
     if payout is None:
@@ -167,6 +224,29 @@ def contract(body: Mapping[str, Any], raw_key: str, received_ns: int = 0) -> Con
         unread=tuple(unread),
         resolution=resolution(body, payout),
         read_at_ns=received_ns,
+    )
+
+
+def event(body: Mapping[str, Any], raw_key: str, received_ns: int = 0) -> Event | None:
+    """One event, from `/events/{event_ticker}`'s `event` with its markets
+    nested: its members by ticker, mutually exclusive as Kalshi states it,
+    exhaustive not stated. None where it names no ticker or no market."""
+    ticker = str(body.get("event_ticker") or "")
+    markets = body.get("markets")
+    listed = markets if isinstance(markets, Sequence) and not isinstance(markets, str) else []
+    members = tuple(str(m["ticker"]) for m in listed if isinstance(m, Mapping) and m.get("ticker"))
+    if not ticker or not members:
+        return None
+    exclusive = body.get("mutually_exclusive")
+    return Event(
+        ref=ticker,
+        title=str(body.get("title") or body.get("sub_title") or ""),
+        members=members,
+        mutually_exclusive=exclusive if isinstance(exclusive, bool) else None,
+        exhaustive=None,
+        series=str(body.get("series_ticker") or ""),
+        valid_from_ns=received_ns,
+        raw_key=raw_key,
     )
 
 
@@ -279,6 +359,24 @@ class KalshiMarket:
         if not isinstance(body, Mapping) or "ticker" not in body:
             return None
         return contract(body, fetched.raw_key, fetched.received_at_ns)
+
+    def event(self, ref: str) -> Event | None:
+        """The event a contract belongs to, by its reference (the contract's
+        `market`, Kalshi's event ticker); None where Kalshi knows none."""
+        try:
+            fetched = self.client.event(ref)
+        except VenueError as refused:
+            if refused.status == NOT_FOUND:
+                return None
+            raise
+        body = fetched.value.get("event") if isinstance(fetched.value, Mapping) else None
+        if not isinstance(body, Mapping):
+            return None
+        if not body.get("markets") and isinstance(fetched.value.get("markets"), list):
+            # An answer with its markets beside the event, as Kalshi sent
+            # them before `with_nested_markets`.
+            body = {**body, "markets": fetched.value["markets"]}
+        return event(body, fetched.raw_key, fetched.received_at_ns)
 
     def last(self, of: Contract) -> Tick:
         fetched = self.client.trades(of.code)

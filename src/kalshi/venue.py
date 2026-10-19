@@ -3,7 +3,9 @@
 REST at external-api.kalshi.com/trade-api/v2: `/markets/{ticker}` (one
 market, asked only for a subject the lake wants, and asked again for its
 outcome once it is past its close), `/markets/{ticker}/orderbook`
-(its resting bids, YES and NO) and `/markets/trades?ticker=` (its last trade).
+(its resting bids, YES and NO), `/markets/trades?ticker=` (its last trade)
+and, from 0.8.0, `/events/{event_ticker}` (the event a market it serves
+belongs to, with its markets, for the event's grouping).
 No key: nothing here holds a credential, and nothing is sent but the
 request. The standard library's HTTP client; the plugin depends on nothing
 but the SDK. The market list is never read: a contract is asked for by its
@@ -212,6 +214,19 @@ class Kalshi:
         """A market's resting bids, YES and NO."""
         return self._get(
             "orderbook", ticker, f"/markets/{urllib.parse.quote(ticker)}/orderbook", live=True
+        )
+
+    def event(self, event_ticker: str) -> Fetched:
+        """An event, with its markets nested in it (contract v26: its
+        grouping); kept as a line of the day's live responses, added only
+        when it changed, so an event unchanged keeps the time it first
+        arrived."""
+        return self._get(
+            "event",
+            event_ticker,
+            f"/events/{urllib.parse.quote(event_ticker)}",
+            {"with_nested_markets": "true"},
+            live=True,
         )
 
     def trades(self, ticker: str) -> Fetched:

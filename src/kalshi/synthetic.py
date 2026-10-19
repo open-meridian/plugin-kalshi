@@ -29,6 +29,9 @@ from .venue import Response
 
 _HEADERS = {"cache-control": "no-store"}
 _FILES = ("markets", "orderbook", "trades")
+#: Kept only where a directory states events (contract v26): a later
+#: stage's exchanges state none.
+_OPTIONAL = ("events",)
 
 
 def _found(body: Any) -> Response:
@@ -57,18 +60,24 @@ def _asked(url: str) -> tuple[str, str] | None:
         return "markets", parts[1]
     if len(parts) == 3 and parts[0] == "markets" and parts[2] == "orderbook":
         return "orderbook", parts[1]
+    if len(parts) == 2 and parts[0] == "events":
+        return "events", parts[1]
     return None
 
 
 class Synthetic:
     """Answers from a directory of synthetic exchanges: `markets.json`,
-    `orderbook.json` and `trades.json`, each Kalshi's body per ticker."""
+    `orderbook.json` and `trades.json`, each Kalshi's body per ticker, and
+    `events.json`, each event's body per event ticker, where it has one."""
 
     def __init__(self, directory: Path | None = None) -> None:
         root = directory or Path(str(resources.files("kalshi") / "synthetic"))
         self.held: dict[str, dict[str, Any]] = {
             name: json.loads((root / f"{name}.json").read_text(encoding="utf-8")) for name in _FILES
         }
+        for name in _OPTIONAL:
+            path = root / f"{name}.json"
+            self.held[name] = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
 
     def __call__(self, url: str, headers: Mapping[str, str]) -> Response:
         asked = _asked(url)

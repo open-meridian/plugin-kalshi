@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.edge import RawStore
-from meridian.roles.data.event_contracts import Market
+from meridian.roles.data.event_contracts import Event, Market
 
 from kalshi import page
 from kalshi.convert import KalshiMarket
@@ -85,6 +85,19 @@ LATER = (
 DETERMINED: str | None = RESOLVED
 DISPUTED: tuple[str, tuple[Path, ...]] | None = (RESOLVED, (EXCHANGES / "disputed",))
 
+# ── Event groups (contract v26) ─────────────────────────────────────────────
+
+#: An event Kalshi states mutually exclusive (`MECNET`): a day's highest
+#: temperature in ranges, its tails open; and an event of markets "above"
+#: each strike, which Kalshi states are not mutually exclusive. Kalshi never
+#: states whether an event's markets are exhaustive, so every event it
+#: groups presents a flag the venue does not state.
+EXCLUSIVE, LADDER = "KXSYNTHHIGH-26DEC10", "KXSYNTH-26DEC"
+#: The exclusive event's range markets: its lower tail, a range, its upper.
+LOWER_TAIL, RANGE, UPPER_TAIL = (
+    "KXSYNTHHIGH-26DEC10-T84", "KXSYNTHHIGH-26DEC10-B84.5", "KXSYNTHHIGH-26DEC10-T85",
+)  # fmt: skip
+
 #: The suite's cases Kalshi's one dataset never presents, each with why: the
 #: dataset publishes prices and quotes now, per contract, in dollars.
 NOT_PRESENTED = {
@@ -126,6 +139,20 @@ def market(now_ns: int = NOW_NS, directory: Path | None = None) -> Market:
         sleep=_instant,
     )
     return KalshiMarket(client, "synthetic")
+
+
+def event(ref: str) -> Event:
+    """One of Kalshi's synthetic events, as the plugin's conversion reads it."""
+    read = market().event(ref)  # type: ignore[attr-defined]
+    assert isinstance(read, Event), ref
+    return read
+
+
+#: The data suite's event groups (contract v26): `reports-an-event-group` on
+#: the exclusive event, `reports-a-flag-the-venue-does-not-state` on the
+#: ladder, whose exhaustiveness -- as every event's -- Kalshi does not state.
+EVENT = event(EXCLUSIVE)
+EVENT_PLACEHOLDERS = event(LADDER)
 
 
 def calls(market: Any) -> list[str]:

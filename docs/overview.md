@@ -61,6 +61,16 @@ your readers see a disputed result as it changed, and the final one with
 when Kalshi paid out. Outcomes are kept by default. Paying the holders of a
 position is not the plugin's: it records what Kalshi determined.
 
+## Events
+
+For each contract it serves, the plugin also reports the Kalshi event the
+contract belongs to: the event's markets, its series, and whether Kalshi
+states the markets mutually exclusive (at most one can resolve YES). Your
+deployment keeps the group beside its instrument records and asks the
+platform to match it; a change to its markets or to what Kalshi states makes
+a new version. Kalshi never states whether an event's markets cover every
+result, so that is reported as not stated, never as no.
+
 ## What it never makes up
 
 - A figure is recorded exactly as Kalshi stated it, never rounded and never
