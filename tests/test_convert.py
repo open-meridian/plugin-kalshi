@@ -217,3 +217,22 @@ def test_an_event_naming_no_market_is_none_and_old_answers_are_read() -> None:
     said = convert.event({"event_ticker": "KX", "markets": [{"ticker": "KX-1"}]}, "k")
     assert said is not None and said.mutually_exclusive is None, "not stated, never false"
     assert venue.market().event("KXNOSUCH") is None  # type: ignore[attr-defined]
+
+
+def test_a_range_markets_bounds_are_on_its_contract_and_kept_in_the_map(tmp_path: Any) -> None:
+    from meridian.roles.data.event_contracts import ContractMap
+
+    market = venue.market()
+    ranged = market.contract(venue.RANGE)
+    tail = market.contract(venue.LOWER_TAIL)
+    assert ranged is not None and tail is not None
+    assert ranged.floor is not None and ranged.cap is not None
+    assert (str(ranged.floor.value), ranged.floor.inclusive) == ("84", True)
+    assert (str(ranged.cap.value), ranged.cap.inclusive) == ("85", True)
+    assert tail.floor is None and tail.cap is not None and tail.cap.inclusive is False
+    assert ranged.bound_unit == "", "Kalshi states no unit for a strike"
+    kept = ContractMap(tmp_path / "contracts.json")
+    kept.contracts[ranged.code] = ranged
+    kept.save()
+    again = ContractMap(tmp_path / "contracts.json")
+    assert again.load() and again.contracts[ranged.code].floor == ranged.floor

@@ -42,6 +42,8 @@ Kalshi's vocabulary is read.
   same way, an open tail one bound only; `between` both, each inclusive --
   Kalshi's floor is the least and its cap the greatest value settling YES.
   Any other strike (`functional`, `custom`, `structured`) states no bound.
+  Both are the contract's own (`Contract.floor`, `.cap`, from 0.8.1 on
+  open-meridian 0.31.1, whose contract map keeps them).
   Kalshi states no unit for a strike, so `bound_unit` is left empty: the
   unit is in the market's words, never guessed.
 - **The event** (contract v26; W3.29) is `/events/{event_ticker}`'s, its
@@ -202,10 +204,7 @@ def contract(body: Mapping[str, Any], raw_key: str, received_ns: int = 0) -> Con
     determination where Kalshi states one, and its bounds where it is a
     range."""
     unread: list[Unread] = []
-    # Read, but not yet on the contract: open-meridian 0.31.0's contract map
-    # cannot keep a bound (its save writes the Decimal as is), and sends a
-    # bound on no row; set `floor` and `cap` below once an SDK keeps them.
-    bounds(body, unread)
+    floor, cap = bounds(body, unread)
     stated = body.get("notional_value_dollars")
     payout = number(stated)
     if payout is None:
@@ -224,6 +223,8 @@ def contract(body: Mapping[str, Any], raw_key: str, received_ns: int = 0) -> Con
         unread=tuple(unread),
         resolution=resolution(body, payout),
         read_at_ns=received_ns,
+        floor=floor,
+        cap=cap,
     )
 
 
