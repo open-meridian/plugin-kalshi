@@ -30,15 +30,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from meridian.edge import RawStore
 from meridian.plugin.v1 import operations_pb2 as ops
+from meridian.roles.data.event_contracts import ContractMap, Feed
 from meridian.suites import Recorder
 from meridian.testing import PageClient
 
-from .contracts import ContractMap
 from .convert import KalshiMarket
-from .dgm import Dgm
 from .page import hold, pages
-from .raw import RawStore
 from .synthetic import Synthetic
 from .venue import Kalshi
 
@@ -76,13 +75,13 @@ def _delivering(want: ops.ObservationsWantedEvent) -> Callable[[Any], Any]:
     return lambda _: want
 
 
-async def _worked() -> Dgm:
+async def _worked() -> Feed:
     lake = Recorder("kalshi")
     lake.answer("ResolveIdentifier", _resolved)
     lake.answer("ResolveInstrument", _record)
     store = RawStore(Path(tempfile.mkdtemp(prefix="kalshi-preview-")))
     client = Kalshi(store, transport=Synthetic(), clock_ns=lambda: NOW_NS)
-    dgm = Dgm(lake, KalshiMarket(client, "synthetic"), ContractMap(), clock_ns=lambda: NOW_NS)
+    feed = Feed(lake, KalshiMarket(client, "synthetic"), ContractMap(), clock_ns=lambda: NOW_NS)
     subjects = list(RECORDS)
     for n in range(30):
         want = ops.ObservationsWantedEvent(
@@ -92,7 +91,7 @@ async def _worked() -> Dgm:
             subjects=[ops.SubjectRef(entity_id=subjects[n % 3])],
         )
         lake.answer("ObservationsWanted", _delivering(want))
-        await lake.receive(observations_wanted=dgm.on_want)
+        await lake.receive(observations_wanted=feed.on_want)
     for n, subject in enumerate(subjects[:2]):
         want = ops.ObservationsWantedEvent(
             want_id=f"WNT-L{n}",
@@ -102,17 +101,17 @@ async def _worked() -> Dgm:
             standing=True,
         )
         lake.answer("ObservationsWanted", _delivering(want))
-        await lake.receive(observations_wanted=dgm.on_want)
-    dgm.licensed = frozenset({dgm.dataset("live")})
-    return dgm
+        await lake.receive(observations_wanted=feed.on_want)
+    feed.licensed = frozenset({feed.dataset("live")})
+    return feed
 
 
-async def _fresh() -> Dgm:
+async def _fresh() -> Feed:
     """The plugin just started: nothing asked, nothing read of the venue."""
     lake = Recorder("kalshi")
     store = RawStore(Path(tempfile.mkdtemp(prefix="kalshi-preview-")))
     client = Kalshi(store, transport=Synthetic(), clock_ns=lambda: NOW_NS)
-    return Dgm(lake, KalshiMarket(client, "synthetic"), ContractMap(), clock_ns=lambda: NOW_NS)
+    return Feed(lake, KalshiMarket(client, "synthetic"), ContractMap(), clock_ns=lambda: NOW_NS)
 
 
 def main(argv: list[str]) -> int:

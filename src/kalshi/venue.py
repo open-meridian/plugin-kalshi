@@ -3,7 +3,9 @@
 REST at external-api.kalshi.com/trade-api/v2: `/markets/{ticker}` (one
 market, asked only for a subject the lake wants, and asked again for its
 outcome once it is past its close), `/markets/{ticker}/orderbook`
-(its resting bids, YES and NO) and `/markets/trades?ticker=` (its last trade).
+(its resting bids, YES and NO), `/markets/trades?ticker=` (its last trade)
+and, from 0.8.0, `/events/{event_ticker}` (the event a market it serves
+belongs to, with its markets, for the event's grouping).
 No key: nothing here holds a credential, and nothing is sent but the
 request. The standard library's HTTP client; the plugin depends on nothing
 but the SDK. The market list is never read: a contract is asked for by its
@@ -14,7 +16,7 @@ spends at most five a second from a token bucket, and a 429 is waited out
 (its Retry-After, else 1, 2, 4 seconds) and asked again at most three times,
 each one counted.
 
-**Every response is a raw record first** (raw.py), kept exactly as its bytes
+**Every response is a raw record first** (`meridian.edge.RawStore`), kept exactly as its bytes
 arrived, with its status and the headers that say when it was sent, before
 anything is read from it. A body is parsed with `json_decimal`, so a JSON
 number becomes a Decimal from its own text and never a float.
@@ -35,8 +37,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .market import Health, json_decimal
-from .raw import RawStore
+from meridian.edge import RawStore
+from meridian.roles.data import Health, json_decimal
 
 REST = "https://external-api.kalshi.com/trade-api/v2"
 USER_AGENT = "plugin-kalshi (+https://open-meridian.dev)"
@@ -212,6 +214,19 @@ class Kalshi:
         """A market's resting bids, YES and NO."""
         return self._get(
             "orderbook", ticker, f"/markets/{urllib.parse.quote(ticker)}/orderbook", live=True
+        )
+
+    def event(self, event_ticker: str) -> Fetched:
+        """An event, with its markets nested in it (contract v26: its
+        grouping); kept as a line of the day's live responses, added only
+        when it changed, so an event unchanged keeps the time it first
+        arrived."""
+        return self._get(
+            "event",
+            event_ticker,
+            f"/events/{urllib.parse.quote(event_ticker)}",
+            {"with_nested_markets": "true"},
+            live=True,
         )
 
     def trades(self, ticker: str) -> Fetched:

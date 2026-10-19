@@ -8,8 +8,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from meridian.edge import RawStore
 
-from kalshi.raw import RawStore
 from kalshi.synthetic import Recorded, Synthetic
 from kalshi.venue import REST, Kalshi, RateLimiter, Response, VenueError
 

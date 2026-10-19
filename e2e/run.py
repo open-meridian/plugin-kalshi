@@ -1,5 +1,5 @@
 """`make e2e` and `make e2e-recorded`: the plugin end to end on core's plugin
-harness (contracts v19 and v20), with sample data, beside a reader (e2e/reader.py).
+harness (contracts v19 to v26), with sample data, beside a reader (e2e/reader.py).
 
 1. Launched: the plugin registers its catalogue; the deployment admin's tool
    lists its two datasets: `live`, of prices and quotes, on the UTC day
@@ -8,22 +8,31 @@ harness (contracts v19 and v20), with sample data, beside a reader (e2e/reader.p
 2. Sample data on: nothing is asked of the venue and no record minted
    until the lake wants something -- never the venue's list. The reader then
    names a contract as a custodian's book holds it, by the custodian's own
-   symbol, a market Kalshi does not state as binary the same way, a market
-   Kalshi has determined, and the dollar by ISO 4217.
+   symbol and, from contract v26, Kalshi's ticker under its MIC beside it,
+   as a broker reports the exchange's symbol -- the stand-in platform mints
+   the platform's record by the ticker (rulings 199, 204) -- a market Kalshi
+   does not state as binary the same way, a market Kalshi has determined,
+   and the dollar by ISO 4217.
 3. Licensed and entitled: the admin sets each dataset's licence as its
    default says -- `live` served, not kept; `outcomes` kept -- and entitles
    the reader to both.
 4. Prices wanted and served: the reader follows the contract and reads its
    latest; the lake asks the plugin, which reads the record (W3.6), names it
-   Kalshi's contract by the custodian's symbol, joins Kalshi's ticker to it
-   with the class, type and Kalshi's words offered, resolves the dollar, and
+   Kalshi's contract by the custodian's symbol, joins Kalshi's own code to
+   it with Kalshi's words offered, resolves the dollar, and
    records its last trade, best bid and ask -- the ask the payout less the
    best NO bid -- in dollars, exactly as stated; the lake keeps none and
    serves each to the reader, who hears them, each naming its raw record and
-   the venue as reported.
+   Kalshi's venue, which the stand-in's venue master holds by its MIC from
+   contract v26.
 5. Quotes wanted and served: the reader reads its latest quote; the plugin
    records its best bid and offer with their sizes, the NO side converted,
    served to the reader, who hears it.
+5a. Its event (contract v26): the plugin reports the event its contract
+   belongs to, each of its four markets named by its ticker -- the stand-in
+   platform mints each by Kalshi's symbol -- not mutually exclusive as
+   Kalshi states it, exhaustive not stated; the platform mints the group
+   (`EVG-`), and the reader reads it by the contract (W3.30).
 6. Declined: the market Kalshi does not state as binary is declined as not
    covered.
 6a. An outcome (contract v23): the reader asks for the determined market's
@@ -38,8 +47,8 @@ harness (contracts v19 and v20), with sample data, beside a reader (e2e/reader.p
    the dollar's record.
 8. Its raw responses are in its granted storage, and `store lake` prints no
    row of the live dataset kept, each serving of it, the wants asked,
-   answered, declined and withdrawn, the venue's miss, and the outcome's one
-   row kept.
+   answered, declined and withdrawn, no miss, and the outcome's one row
+   kept.
 
 `make e2e-recorded` (`--recorded=DIR`) runs the same on a developer's
 recording of Kalshi's real answers (e2e/record.py), naming the first binary
@@ -79,6 +88,10 @@ OUTCOME = {"determination": "OUTCOME_DETERMINATION_PAYS", "stage": "OUTCOME_STAG
            "amount": "1.0000", "as_reported": "kalshi:result=yes", "settled_at_ns": 0,
            "source_times": 0}
 STATED = {"PRICE_KIND_LAST": "0.4300", "PRICE_KIND_BID": "0.4300", "PRICE_KIND_ASK": "0.4400"}
+#: Kalshi in the stand-in platform's venue master (contract v26), and the
+#: synthetic contract's event.
+KLSH = "VEN-01JAE0000000000000000KLSH"
+EVENT = "KXSYNTH-26DEC"
 QUOTE = {"bid_amount": "0.4300", "bid_quantity": "55.00", "ask_amount": "0.4400",
          "ask_quantity": "30.00"}
 
@@ -161,7 +174,7 @@ def recorded_contract(directory):
 def run():
     started = time.time()
     contract = recorded_contract(RECORDED[0]) if RECORDED else CONTRACT
-    compose("down", "-v", "--remove-orphans", check=False)
+    compose("--profile", "runner", "down", "-v", "--remove-orphans", check=False)
     compose("up", "-d")
     for instance in (VENUE, "reader"):
         runner("ready", "--instance", instance)
@@ -206,8 +219,12 @@ def run():
                                         ("range", "symbol", NOT_BINARY, "e2e-custodian"),
                                         ("resolved", "symbol", RESOLVED, "e2e-custodian"),
                                         ("usd", "iso4217", "USD", "")):
+        # Contract v24 (W3.7): the custodian states the contract's description
+        # and currency beside its symbol, the minimum a record is minted from.
+        stated = {"description": f"The e2e custodian's event contract {value}",
+                  "currency": "USD", "ticker": "KLSH"} if source else {}
         query = urllib.parse.urlencode({"name": name, "scheme": scheme, "value": value,
-                                        "source": source})
+                                        "source": source, **stated})
         ids = read(f"/resolve?{query}")
     subject, ranged, resolved, usd = ids["contract"], ids["range"], ids["resolved"], ids["usd"]
 
@@ -238,14 +255,17 @@ def run():
         must(row["instrument_id"] == usd or (row["currency_code"] == "USD"
                                              and row["instrument_id"] in ("", usd)),
              f"step 4, in dollars, the dollar's record: {row}")
-        must(row["venue_id"] == "" and row["unconverted"] == [f"{VENUE}:venue"]
+        must(row["venue_id"] == KLSH and row["unconverted"] == []
              and row["raw"].startswith("responses/") and not row["business_date"],
-             f"step 4, the venue not held named as reported, its raw record: {row}")
-    listed = runner("instruments")
-    log("instruments, after the want:\n" + listed)
-    joined = [line for line in listed.splitlines() if line.startswith(subject)]
-    must(joined and f"symbol ({VENUE}): {contract}" in joined[0],
-         f"step 4, Kalshi's ticker joined to the custodian's record: {listed}")
+             f"step 4, the venue held by its MIC named by its ID, its raw record: {row}")
+    record = call("dashboard__read_instrument", {"instrument_id": subject}, "read",
+                  "unchanged")["data"]
+    log(f"the contract's record, after the want: {json.dumps(record)}")
+    held = {(i["scheme"], i["source"], i["value"]) for i in record["identifiers"]}
+    must(subject.startswith("INS-") and ("ticker", "KLSH", contract) in held
+         and ("symbol", VENUE, contract) in held,
+         f"step 4, the platform's record minted by Kalshi's ticker, Kalshi's code joined: "
+         f"{record}")
 
     # 5. Quotes wanted, served, heard: the NO side converted.
     read(f"/quotes?subject={subject}&dataset={DATASET}")
@@ -258,6 +278,21 @@ def run():
     if not EXACT and "ask_amount" in quote and "bid_amount" in quote:
         must(Decimal(quote["bid_amount"]) <= Decimal(quote["ask_amount"]),
              f"step 5, the ask from the NO side above the bid: {quote}")
+
+    # 5a. Its event (contract v26, W3.29): the plugin reports the event its
+    # contract belongs to, each member named by its ticker; the platform
+    # matches or mints the group, and the reader reads it by the contract.
+    if EXACT:
+        def grouped():
+            return read(f"/groups?subject={subject}")["groups"] or None
+        [group] = until(120, grouped, "step 5a, the contract's event group was not read")
+        must(group["venue_event_ref"] == EVENT and group["venue_id"] == KLSH
+             and group["event_group_id"].startswith("EVG-") and group["series_id"] == "KXSYNTH"
+             and len(group["members"]) == 4 and subject in group["members"]
+             and group["mutually_exclusive"] == "EVENT_GROUP_FLAG_FALSE"
+             and group["exhaustive"] == "EVENT_GROUP_FLAG_NOT_STATED"
+             and group["version"] == 1,
+             f"step 5a, the event's group as Kalshi states it, exhaustive not stated: {group}")
 
     # 6. Declined: Kalshi does not state the range market as binary.
     read(f"/prices?subject={ranged}&dataset={DATASET}")
@@ -287,7 +322,7 @@ def run():
     connection = call(named["read_connection"], {}, "read", "unchanged")["data"]
     must(connection["mode"] == "Sample data" and connection["venue"] == NAME
          and connection["credentials"] == [] and connection["sessions"] is None
-         and connection["venue_held"] is False and connection["calls"] > 0,
+         and connection["venue_held"] is True and connection["calls"] > 0,
          f"step 7, read_connection: {connection}")
     shown = page(VENUE, "admin", "/")
     must("Sample data: the plugin answers from recorded responses" in shown
@@ -340,20 +375,32 @@ def run():
          f"step 8, each serving of the contract's rows, to the reader: {servings}")
     must(any(line.startswith(f"want|{DATASET}|asked|CONTRACT|") for line in lines),
          f"step 8, the want asked: {lines}")
-    must(any(line.startswith(f"miss|{VENUE}|") for line in lines),
-         f"step 8, the venue's miss counted: {lines}")
+    must(not any(line.startswith(f"miss|{VENUE}|") for line in lines),
+         f"step 8, no miss: the venue is held (contract v26's stand-in): {lines}")
 
     print(f"e2e OK in {int(time.time() - started)}s: on core's plugin harness, the live "
           "dataset of prices and quotes listed by the deployment admin's tool, served, not "
           "kept by default; nothing asked of Kalshi and no record minted before a want; a "
-          "custodian's contract, known by its own symbol, read and named, Kalshi's ticker "
-          "joined to it, and its last trade, bid and ask recorded per contract in dollars, "
+          "custodian's contract, stated by its own symbol and Kalshi's ticker, minted by the "
+          "platform by the ticker, read and named, Kalshi's code joined to it, and its last trade, bid and ask recorded per contract in dollars, "
           "served to the reader and heard; its quote with sizes, the ask the payout less the "
-          "best NO bid; the range market declined as not covered; a determined market's "
+          "best NO bid; its event reported and read back as a group; the range market "
+          "declined as not covered; a determined market's "
           "outcome recorded unasked from the contract's side, kept, heard and read back; "
           "read_connection and "
           "read_datasets answering what the pages show, the dataset licensed, the payout one dollar; raw responses "
-          "in storage; and `store lake` keeping no row, each serving, the wants and the miss")
+          "in storage; and `store lake` keeping no row, each serving and the wants")
+
+
+def diagnose():
+    """On a failure, what the harness holds, kept in the run's log: the
+    instruments, the plugin's Datasets record, and the lake's record."""
+    for what in (("instruments",), ("mcp", "list")):
+        runner(*what, check=False)
+    tools = [t for t in runner("mcp", "list", check=False).stdout.split() if "read_datasets" in t]
+    for tool in tools:
+        runner("mcp", "call", tool, "{}", check=False)
+    compose("run", "--rm", "-T", "store", "lake", check=False)
 
 
 def main():
@@ -361,6 +408,10 @@ def main():
     try:
         run()
     except (Failed, subprocess.TimeoutExpired, KeyError, ValueError, IndexError) as failed:
+        try:
+            diagnose()
+        except (Failed, subprocess.TimeoutExpired):
+            pass
         print(f"e2e FAILED: {failed}; the run is in {LOG}, the components' logs in "
               ".e2e/components.log", file=sys.stderr)
         return 1

@@ -4,6 +4,8 @@ The Kalshi plugin puts Kalshi's public market data for binary event
 contracts into your deployment's lake, where the plugins that watch and
 value your book read it. It needs no key: Kalshi's market data is public.
 
+It is a data plugin: its first-use path, its two pages and its Summary figures are every data plugin's, described once on [Using a data plugin](https://open-meridian.dev/how-to/using-a-data-plugin/). These sections cover what is Kalshi's own.
+
 ## Its role
 
 It holds one role, `data`: it records prices and quotes into the lake, with
@@ -58,6 +60,16 @@ disputed, amended, finalized -- is a new version of the same outcome, so
 your readers see a disputed result as it changed, and the final one with
 when Kalshi paid out. Outcomes are kept by default. Paying the holders of a
 position is not the plugin's: it records what Kalshi determined.
+
+## Events
+
+For each contract it serves, the plugin also reports the Kalshi event the
+contract belongs to: the event's markets, its series, and whether Kalshi
+states the markets mutually exclusive (at most one can resolve YES). Your
+deployment keeps the group beside its instrument records and asks the
+platform to match it; a change to its markets or to what Kalshi states makes
+a new version. Kalshi never states whether an event's markets cover every
+result, so that is reported as not stated, never as no.
 
 ## What it never makes up
 
