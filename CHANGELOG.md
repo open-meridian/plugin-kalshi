@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.1
+
+On open-meridian 0.31.1: a range market's bounds on its contract (the gaps
+spec's A4), and two small fixes.
+
+- **Bounds on the contract.** `convert.contract` sets `Contract.floor` and
+  `.cap` from the market's `strike_type`, `floor_strike` and `cap_strike`,
+  which 0.8.0 read but held off it: open-meridian 0.31.1's contract map
+  keeps a bound (its value as exact text, and whether it is inclusive) and
+  reads it back. Kalshi states no unit for a strike, so `bound_unit` stays
+  empty. A bound reaches no row in contract v26; its data path is contract
+  v27's (ruling 464).
+- **The SDK's check restored.** 0.31.1's
+  `test_a_record_already_complete_is_not_resolved_again` holds ruling 312's
+  ticker itself, so this plugin's override is gone.
+- **e2e/record.py** keeps its raw records through `meridian.edge.RawStore`;
+  it still imported `kalshi.raw`, which 0.7.0 removed, so recording for
+  `make e2e-recorded` failed.
+- **The pins**: open-meridian 0.31.1 and plugin-python:0.31.1 by tag and
+  digest (`sha256:67781f14...a3535b39`); core v26's runtime and harness and
+  `meridian` 0.1.49 as 0.8.0 set them.
+
 ## 0.8.0
 
 On open-meridian 0.31.0, contract v26: Kalshi's events reported as groups
@@ -26,10 +48,13 @@ carries 0.6.0 and 0.7.0, which never merged on their own.
   `between` both inclusive), but not yet set on the contract:
   open-meridian 0.31.0's contract map cannot keep a bound and sends none.
   Kalshi states no unit for a strike, so `bound_unit` stays empty.
-- **e2e on core v26's harness** (199): the stand-in platform holds Kalshi
-  by its MIC and mints its contracts by ticker, so rows name Kalshi's
-  `VEN-` ID and no miss is counted; step 5a reads the contract's event
-  group back by the contract.
+- **e2e on core v26's harness** (199): the custodian states Kalshi's
+  ticker under its MIC beside its own symbol, as a broker reports the
+  exchange's symbol, so the stand-in platform mints the platform's record
+  by it; the stand-in holds Kalshi by its MIC, so rows name Kalshi's `VEN-`
+  ID and no miss is counted; step 5a reads the contract's event group back.
+  On a failure the run logs the instruments, the plugin's Datasets record
+  and the lake's record, and e2e.yaml keeps the hidden `.e2e/` logs.
 - **Tests**: `tests/test_events.py` (reported as stated, unchanged not
   reported again, held back while a member does not resolve), the
   conversion's events and bounds; the SDK check

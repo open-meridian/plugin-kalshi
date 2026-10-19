@@ -12,10 +12,10 @@ It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.31.0), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.31.1), never copied
 between them.
 
-**Status.** 0.8.0, built on open-meridian 0.31.0 (contract v26: each contract's event reported as a group; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+**Status.** 0.8.1, built on open-meridian 0.31.1 (contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
 role `data`, and proven against the core it pins, by digest. Not
 released, uploaded or launched anywhere.
 
@@ -93,10 +93,15 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
   its own `LCL-` group meanwhile. Each event is read once its first contract
   is served and again every ten minutes, and reported again only where
   Kalshi states it otherwise, which makes a new version; an event a member
-  of which does not resolve is held back and read again. A range market's
-  bounds (`strike_type` with `floor_strike` and `cap_strike`) are read in
-  `convert.py` and wait for an SDK that keeps them on the contract
-  (open-meridian 0.31.1).
+  of which does not resolve is held back and read again.
+- **A range market's bounds** (contract v26, A4) are on its contract:
+  `floor_strike` and `cap_strike` as its `strike_type` reads them --
+  `greater` a floor not inclusive, `greater_or_equal` one inclusive, `less`
+  and `less_or_equal` a cap the same way, an open tail one bound only,
+  `between` both inclusive -- kept in the contract map with the rest.
+  Kalshi states no unit for a strike, so `bound_unit` is left empty. In
+  contract v26 a bound reaches no row (only a `reference` plugin offers
+  template fields); its data path is contract v27's (ruling 464).
 - **The venue** is resolved in the platform's venue master by Kalshi's MIC
   (`iso10383` `KLSH`), and each row names its `VEN-` ID. A deployment that
   does not hold it gets each row with the venue left empty and the code
@@ -192,8 +197,9 @@ of a UTC day under `responses/`, moved past the window through the SDK.
 runs the plugin with sample data on core's plugin harness beside the e2e's
 reader (`e2e/reader.py`, holding `custody` to name a custodian's records,
 `reporting` to hear prices and `signal` to hear quotes): the catalogue
-listed, nothing asked of Kalshi before a want, a custodian's contract read
-and named, its prices and quote recorded in dollars -- the ask from the NO
+listed, nothing asked of Kalshi before a want, a custodian's contract --
+stated by its own symbol and Kalshi's ticker, which the stand-in platform
+mints the platform's record by (contract v26) -- read and named, its prices and quote recorded in dollars -- the ask from the NO
 side -- served to the reader and heard, its event reported and read back
 as a group, a range market declined, a
 determined market's outcome recorded, kept, heard and read back, both read

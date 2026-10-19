@@ -21,7 +21,8 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from kalshi.raw import RawStore
+from meridian.edge import RawStore
+
 from kalshi.venue import Kalshi, VenueError
 
 
