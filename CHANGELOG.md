@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.9.0
+
+On open-meridian 0.32.2, contract v27 (meridian-design `plans/the-v27-build.md`,
+§B and §G), on core v27's harness.
+
+- **The events are the SDK's.** `__main__.Events`, the loop reading each
+  served contract's event once first served and every ten minutes and
+  reporting it on a change, is gone: `Feed.keep_events` (open-meridian
+  0.32.0) does the same over `KalshiMarket.event`. `tests/test_events.py`
+  holds the SDK's loop to what Kalshi's did.
+- **Each range member's bounds with its event's report** (ruling 464). The
+  SDK's `report_event` sends each member's floor, cap and unit
+  (`member_bounds`) as Kalshi's `strike_type` states them; the new test
+  holds them to the design's v27 row: one per range member, naming a member
+  of the group, inclusive as stated, no unit (Kalshi states none).
+- **No challenge deadline.** Contract v27's `Outcome.challenge_ends_at_ns`
+  stays 0 ("deadline not reported"): Kalshi's public REST states the
+  dispute window's length (`settlement_timer_seconds`) but no time of
+  determination, and the field is the venue's statement, never the
+  plugin's sum. Said in the README, AGENTS.md and docs/overview.md.
+- **The suite's v27 cases** are named not presented through the SDK's
+  `EVENT_CONTRACTS_NOT_PRESENTED`: the seven rates cases;
+  `records-a-datasets-liveness` (Kalshi is polled each second, and no
+  stream gives a heartbeat); `queries-the-lake-within-bounds`, about trades
+  from v27 (it records none); and `reports-its-feed-delay`, about latency,
+  with ruling 518's reason (core receives ReportLatency from contract v28,
+  ruling 515).
+- **The pins**: open-meridian 0.32.2 and plugin-python:0.32.2 by tag and
+  digest (`sha256:2235d96d...54020b80`); core v27's runtime and harness at
+  `a5da59a` (chart 0.1.310) by digest; `meridian` 0.1.52 in check.yaml.
+  e2e-latest.yaml keeps the harness's hidden logs (`include-hidden-files`).
+- Its `DatasetLicence` sets none of 0.32.2's five new fields: core v27
+  refuses a registration carrying them until a core that accepts them is
+  published. The terms page is unchanged.
+
 ## 0.8.1
 
 On open-meridian 0.31.1: a range market's bounds on its contract (the gaps

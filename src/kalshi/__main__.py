@@ -15,7 +15,10 @@ From 0.8.0 (contract v26, W3.29) it reports, for each contract it serves,
 the event Kalshi groups it in: its markets, and whether Kalshi states them
 mutually exclusive (exhaustive never stated), each event when first read and
 again whenever Kalshi states it otherwise, so the platform matches or mints
-the group and keeps a new version when its members or flags change.
+the group and keeps a new version when its members or flags change. From
+0.9.0 (contract v27) that is the SDK's `Feed.keep_events`, and each range
+member's floor and cap go with the report (ruling 464), offered for its
+record.
 
 It holds nothing it cannot lose: Kalshi's raw responses and the contract map
 are kept in the storage the deployment grants it (decisions/028), and a
@@ -28,14 +31,13 @@ import asyncio
 import logging
 import os
 import signal
-import time
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 import meridian
 from meridian.edge import RawStore, storage_root
 from meridian.roles.data import cancelled
-from meridian.roles.data.event_contracts import ContractMap, Event, Feed
+from meridian.roles.data.event_contracts import ContractMap, Feed
 
 from .convert import KalshiMarket
 from .declaration import DECLARATION, PORT
@@ -118,61 +120,15 @@ async def hear_wants(plugin: meridian.Plugin, feed: Feed, configured: asyncio.Ev
     await plugin.receive(observations_wanted=feed.on_want, want_withdrawn=feed.on_withdrawn)
 
 
-#: How soon an event first served is read, and how often each is read again,
-#: in seconds.
-EVENTS_FIRST, EVENTS_EVERY = 15.0, 600.0
-
-
-def _stated(event: Event) -> tuple[object, ...]:
-    """What Kalshi states of an event that a new version would change."""
-    return (event.members, event.mutually_exclusive, event.exhaustive, event.series, event.title)
-
-
-class Events:
-    """The events of the contracts served, each read once it is first served
-    and again every `EVENTS_EVERY` seconds, and reported where it is new or
-    Kalshi states it otherwise than as last reported. An event a member of
-    which does not resolve is held back (the SDK's `Feed.report_event`) and
-    read again on the next pass."""
-
-    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
-        self.clock = clock
-        #: When each contract's event reference was last read.
-        self.read_at: dict[str, float] = {}
-        #: What was last reported of each event, by its reference.
-        self.reported: dict[str, tuple[object, ...]] = {}
-
-    async def now(self, feed: Feed) -> int:
-        """One pass; how many events were reported."""
-        sent = 0
-        refs = {m.contract.market for m in feed.contracts.mapped() if m.contract.market}
-        for ref in sorted(refs):
-            at = self.read_at.get(ref)
-            if at is not None and self.clock() - at < EVENTS_EVERY:
-                continue
-            self.read_at[ref] = self.clock()
-            event = await asyncio.to_thread(feed.market.event, ref)  # type: ignore[attr-defined]
-            if event is None or self.reported.get(event.ref) == _stated(event):
-                continue
-            if await feed.report_event(event) is None:
-                del self.read_at[ref]  # held back: read again on the next pass
-                continue
-            self.reported[event.ref] = _stated(event)
-            sent += 1
-        return sent
-
-
 async def report_events(feed: Feed, configured: asyncio.Event) -> None:
     """Once the settings have said where to answer from: the events of the
-    contracts served, reported as Kalshi states them."""
+    contracts served, reported as Kalshi states them -- the SDK's
+    `Feed.keep_events` (open-meridian 0.32.0), each event read once its
+    first contract is served and every ten minutes after, reported where it
+    is new or Kalshi states it otherwise, and one held back while a member
+    does not resolve read again on the next pass."""
     await configured.wait()
-    events = Events()
-    while True:
-        try:
-            await events.now(feed)
-        except Exception as failed:  # noqa: BLE001 - said, and read again on the next pass
-            log.warning("events not reported: %s", failed)
-        await asyncio.sleep(EVENTS_FIRST)
+    await feed.keep_events()
 
 
 async def report_health(plugin: meridian.Plugin, feed: Feed) -> None:

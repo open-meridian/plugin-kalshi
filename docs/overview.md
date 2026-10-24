@@ -61,6 +61,11 @@ your readers see a disputed result as it changed, and the final one with
 when Kalshi paid out. Outcomes are kept by default. Paying the holders of a
 position is not the plugin's: it records what Kalshi determined.
 
+An outcome carries no challenge deadline: your pages show "deadline not
+reported". Kalshi states how long a determined result may be disputed, but
+not when it determined it, so the deadline is not Kalshi's to report, and the
+plugin never works one out itself.
+
 ## Events
 
 For each contract it serves, the plugin also reports the Kalshi event the
@@ -69,7 +74,10 @@ states the markets mutually exclusive (at most one can resolve YES). Your
 deployment keeps the group beside its instrument records and asks the
 platform to match it; a change to its markets or to what Kalshi states makes
 a new version. Kalshi never states whether an event's markets cover every
-result, so that is reported as not stated, never as no.
+result, so that is reported as not stated, never as no. For a range market
+(a temperature between two values, say) the report also carries each
+market's lower and upper bound as Kalshi states them, which your instrument
+records show as values offered: a value a person set always wins.
 
 ## What it never makes up
 
