@@ -12,10 +12,10 @@ It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.31.1), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.32.2), never copied
 between them.
 
-**Status.** 0.8.1, built on open-meridian 0.31.1 (contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+**Status.** 0.9.0, built on open-meridian 0.32.2 (contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
 role `data`, and proven against the core it pins, by digest. Not
 released, uploaded or launched anywhere.
 
@@ -79,7 +79,13 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
   an outcome is valid from when the answer first stating it arrived. A
   contract past its close is read again each minute until its final stage
   is recorded. Kept by default, so a reader reads the version in force or
-  as of a time; paying holders is servicing's, not the lake's.
+  as of a time; paying holders is servicing's, not the lake's. **No
+  challenge deadline** (contract v27's `Outcome.challenge_ends_at_ns`, left
+  0, which pages show as "deadline not reported"): the field is the
+  venue's own statement, and Kalshi's public REST states the dispute
+  window's length (`settlement_timer_seconds`) but no time of
+  determination, so the plugin never derives one from when an answer
+  arrived.
 - **Events** (contract v26; meridian-design
   `spec/the-contract-gaps-v26-and-v27-close.md`, A1 to A9; W3.29). For each
   contract it serves, the plugin reads the event Kalshi groups it in
@@ -93,15 +99,18 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
   its own `LCL-` group meanwhile. Each event is read once its first contract
   is served and again every ten minutes, and reported again only where
   Kalshi states it otherwise, which makes a new version; an event a member
-  of which does not resolve is held back and read again.
+  of which does not resolve is held back and read again. From 0.9.0 that
+  loop is the SDK's (`Feed.keep_events`, open-meridian 0.32.0), over
+  Kalshi's `event(ref)`.
 - **A range market's bounds** (contract v26, A4) are on its contract:
   `floor_strike` and `cap_strike` as its `strike_type` reads them --
   `greater` a floor not inclusive, `greater_or_equal` one inclusive, `less`
   and `less_or_equal` a cap the same way, an open tail one bound only,
   `between` both inclusive -- kept in the contract map with the rest.
-  Kalshi states no unit for a strike, so `bound_unit` is left empty. In
-  contract v26 a bound reaches no row (only a `reference` plugin offers
-  template fields); its data path is contract v27's (ruling 464).
+  Kalshi states no unit for a strike, so `bound_unit` is left empty. From
+  contract v27 (ruling 464) each range member's floor, cap and unit go with
+  its event's report (`ReportEventGroupRequest.member_bounds`), which the
+  member's instrument record takes as values offered; a person's value wins.
 - **The venue** is resolved in the platform's venue master by Kalshi's MIC
   (`iso10383` `KLSH`), and each row names its `VEN-` ID. A deployment that
   does not hold it gets each row with the venue left empty and the code
@@ -122,8 +131,14 @@ mapped: an outcome recorded, a disputed outcome restated, a partial payout.
 Contract v26's are mapped too: `reports-an-event-group` on an event Kalshi
 states mutually exclusive, `reports-a-flag-the-venue-does-not-state` on one
 it states is not (exhaustiveness, which Kalshi never states, reported not
-stated), and `queries-the-lake-within-bounds` (the SDK's producer);
-`hears-and-reads-an-event-group` is answered by the SDK.
+stated); `hears-and-reads-an-event-group` is answered by the SDK.
+Contract v27's cases an event-contract venue never presents are the SDK's
+list (`EVENT_CONTRACTS_NOT_PRESENTED`): the seven rates cases (it publishes
+no rates); `records-a-datasets-liveness` (Kalshi is polled over REST each
+second, and no stream gives a heartbeat to record); and
+`queries-the-lake-within-bounds`, about trades from v27 (it records none).
+`reports-its-feed-delay`, about latency, is not presented under ruling 518:
+core receives ReportLatency from contract v28 (ruling 515).
 Every other case passes, `reads-its-datasets-licences` among them: it reads
 which of its datasets a deployment admin has licensed, on start and each
 minute.

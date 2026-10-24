@@ -20,6 +20,7 @@ from typing import Any
 
 from meridian.edge import RawStore
 from meridian.roles.data.event_contracts import Event, Market
+from meridian.roles.data.testing import EVENT_CONTRACTS_NOT_PRESENTED
 
 from kalshi import page
 from kalshi.convert import KalshiMarket
@@ -99,8 +100,15 @@ LOWER_TAIL, RANGE, UPPER_TAIL = (
 )  # fmt: skip
 
 #: The suite's cases Kalshi's one dataset never presents, each with why: the
-#: dataset publishes prices and quotes now, per contract, in dollars.
+#: dataset publishes prices and quotes now, per contract, in dollars. From
+#: contract v27 the SDK names an event-contract venue's own
+#: (`EVENT_CONTRACTS_NOT_PRESENTED`): the rates cases; the dataset's liveness,
+#: since Kalshi is polled over REST and no stream gives a heartbeat;
+#: `queries-the-lake-within-bounds`, about trades, which it records none of;
+#: and the feed delay, about `latency`, which core receives from contract v28
+#: (ruling 518).
 NOT_PRESENTED = {
+    **EVENT_CONTRACTS_NOT_PRESENTED,
     "a-daily-close": "its one dataset publishes live prices and quotes, and no daily closes",
     "the-forming-day-restated": "its one dataset publishes no daily closes to restate",
     "a-daily-bar": "its one dataset publishes live prices and quotes, and no bars",
