@@ -33,9 +33,10 @@ kalshi = "kalshi.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# The synthetic exchanges, installed beside the code that reads them.
+# The synthetic exchanges, installed beside the code that reads them, and the
+# Connection page's template.
 [tool.setuptools.package-data]
-kalshi = ["synthetic/*.json"]
+kalshi = ["synthetic/*.json", "templates/kalshi/*.html"]
 
 # What this plugin says about itself, which `meridian plugin upload` sends and
 # a deployment admin approves before it runs (W8). Declarations, not grants.
