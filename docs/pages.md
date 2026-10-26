@@ -13,7 +13,10 @@ same order. Neither shows a price, a side of the book or a size.
   deployment does not hold it.
 - **Limits and use**: what Kalshi allows and what the plugin spends of
   it, how many calls it made and how many met a rate limit and waited it
-  out, the last call and the last error.
+  out, the last call and the last error; and **Fees**: Kalshi's fee
+  schedule could not be read when this version was made, so no rate is
+  shown, with why, and what Kalshi states for each series instead (tap the
+  row for the whole).
 - **Stream**: "Does not stream": it reads a contract when it is wanted.
 
 ## Datasets
