@@ -51,6 +51,10 @@ EXACT = "KXSYNTH-26DEC-T4.25"
 EXACT_LAST = "0.123456789012345678"
 #: A contract with bids and no offer: nobody bids for its NO side.
 ONE_SIDED = "KXSYNTH-26DEC-T4.50"
+#: A contract whose book is crossed -- a YES bid of 0.5800 against an ask of
+#: the payout less a NO bid of 0.4500 -- recorded invalid by the edge
+#: (contract v28, ruling 424).
+CROSSED = "KXSYNTH-26DEC-T4.75"
 #: A contract whose book and last trade an older answer states in cents.
 CENTS = "KXSYNTH-26DEC-T3.75"
 CENTS_BID, CENTS_ASK, CENTS_LAST = "0.41", "0.4300", "0.41"
@@ -105,8 +109,9 @@ LOWER_TAIL, RANGE, UPPER_TAIL = (
 #: (`EVENT_CONTRACTS_NOT_PRESENTED`): the rates cases; the dataset's liveness,
 #: since Kalshi is polled over REST and no stream gives a heartbeat;
 #: `queries-the-lake-within-bounds`, about trades, which it records none of;
-#: and the feed delay, about `latency`, which core receives from contract v28
-#: (ruling 518).
+#: from contract v28 the chains and filings cases, and the duplicate and gap
+#: cases, since its quotes are polled and no message is numbered. Its feed
+#: delay is reported (required again from contract v28, ruling 518).
 NOT_PRESENTED = {
     **EVENT_CONTRACTS_NOT_PRESENTED,
     "a-daily-close": "its one dataset publishes live prices and quotes, and no daily closes",

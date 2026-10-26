@@ -61,10 +61,22 @@ your readers see a disputed result as it changed, and the final one with
 when Kalshi paid out. Outcomes are kept by default. Paying the holders of a
 position is not the plugin's: it records what Kalshi determined.
 
-An outcome carries no challenge deadline: your pages show "deadline not
-reported". Kalshi states how long a determined result may be disputed, but
-not when it determined it, so the deadline is not Kalshi's to report, and the
-plugin never works one out itself.
+A determined result may be disputed while Kalshi's settlement timer runs,
+and an amended one starts it again. Kalshi states how long the timer runs
+but not when it started, so the plugin counts it from when it first read the
+determination, and only where it read the contract a minute or so before
+and found it not yet determined: the deadline your pages show is then at
+most that late, never early. Where it has no such read -- after a restart,
+or for a contract first asked about once determined -- your pages show
+"deadline not reported".
+
+## Fees
+
+Kalshi's fee schedule could not be read when this version was made (its
+page refused automated reads), so Connection's "Fees" row shows no rate and
+says why. Kalshi does state, for each series, which fee formula applies and
+its multiplier; the coefficient they multiply is the schedule's. The
+schedule is read and dated at the plugin's next version, when it can be.
 
 ## Events
 

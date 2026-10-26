@@ -24,7 +24,7 @@ a deployment admin approves it.
   with sample data: the synthetic exchanges in `src/kalshi/synthetic/`, or
   a developer's recorded ones.
 - **What every data plugin of an event-contract venue does is the SDK's**
-  (open-meridian 0.32.2; nothing is copied between plugins): naming each
+  (open-meridian 0.33.0; nothing is copied between plugins): naming each
   subject, resolving the cash and the venue, recording prices, quotes and
   outcomes, answering wants and keeping them current, and reporting an
   event's group (contract v26), with its range members' bounds and kept
@@ -72,10 +72,12 @@ a deployment admin approves it.
   the stages (`determined`, `amended` → determined; `disputed`; `finalized`
   → final, with `settlement_ts`); Kalshi states no time of determination, so
   it is valid from when the answer first stating it arrived. No business
-  date; no `want_id`. `Outcome.challenge_ends_at_ns` (contract v27) stays 0:
-  it is the venue's own statement of when the challenge window ends, and
-  Kalshi's REST states the window's length (`settlement_timer_seconds`)
-  but no determination time; never derive it from an answer's arrival.
+  date; no `want_id`. `Outcome.challenge_ends_at_ns` (from 0.10.0) is
+  `settlement_timer_seconds` counted from when the answer first stating a
+  `determined` or `amended` status arrived, only where the read before it
+  (at most two minutes earlier) stated another status
+  (`KalshiMarket.timed`); otherwise 0. Never counted from a read it did
+  not follow.
 - **A data plugin shows no market data** (ruled 2026-10-03). Its pages are
   the data role's (meridian-design `spec/plugin-pages-follow-their-role.md`):
   Connection and Datasets, under Manage alone, drawn by the SDK's templates for

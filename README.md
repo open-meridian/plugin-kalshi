@@ -12,12 +12,11 @@ It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.32.2), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.33.0), never copied
 between them.
 
-**Status.** 0.9.0, built on open-meridian 0.32.2 (contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
-role `data`, and proven against the core it pins, by digest. Not
-released, uploaded or launched anywhere.
+**Status.** 0.10.0, built on open-meridian 0.33.0 (contract v28: a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge, its fee schedule's state on Connection; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+role `data`, and proven against the core it pins, by digest.
 
 ## What it does
 
@@ -79,13 +78,17 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
   an outcome is valid from when the answer first stating it arrived. A
   contract past its close is read again each minute until its final stage
   is recorded. Kept by default, so a reader reads the version in force or
-  as of a time; paying holders is servicing's, not the lake's. **No
-  challenge deadline** (contract v27's `Outcome.challenge_ends_at_ns`, left
-  0, which pages show as "deadline not reported"): the field is the
-  venue's own statement, and Kalshi's public REST states the dispute
-  window's length (`settlement_timer_seconds`) but no time of
-  determination, so the plugin never derives one from when an answer
-  arrived.
+  as of a time; paying holders is servicing's, not the lake's. **The
+  settlement timer** (from 0.10.0; `Outcome.challenge_ends_at_ns`, the
+  sample's Resolution window): Kalshi runs a determination's dispute window
+  for `settlement_timer_seconds` and restarts it on an amendment
+  (docs.kalshi.com, "Market lifecycle"), stating its length but not when it
+  began. So its end is the timer counted from when the answer first stating
+  the determination arrived, set only where the plugin's read before it,
+  at most two minutes earlier, stated none: at most that late, never early.
+  A determination first read without that read before it -- after a
+  restart, or a contract first asked for once determined -- carries none
+  (0, "deadline not reported").
 - **Events** (contract v26; meridian-design
   `spec/the-contract-gaps-v26-and-v27-close.md`, A1 to A9; W3.29). For each
   contract it serves, the plugin reads the event Kalshi groups it in
@@ -137,8 +140,13 @@ list (`EVENT_CONTRACTS_NOT_PRESENTED`): the seven rates cases (it publishes
 no rates); `records-a-datasets-liveness` (Kalshi is polled over REST each
 second, and no stream gives a heartbeat to record); and
 `queries-the-lake-within-bounds`, about trades from v27 (it records none).
-`reports-its-feed-delay`, about latency, is not presented under ruling 518:
-core receives ReportLatency from contract v28 (ruling 515).
+Contract v28's are the SDK's list too: the option-chain and filings cases
+(it lists no chain and publishes no filing), and
+`a-duplicate-is-recorded-suspicious` and `rows-after-a-gap-are-suspicious`
+(its quotes are polled; no message is numbered).
+`a-crossed-quote-is-recorded-invalid` passes on a synthetic contract whose
+book is crossed, and `reports-its-feed-delay` (required from contract v28,
+ruling 518) on a standing want kept current, its rows' age at the edge.
 Every other case passes, `reads-its-datasets-licences` among them: it reads
 which of its datasets a deployment admin has licensed, on start and each
 minute.
@@ -166,7 +174,12 @@ the reading roles.
   subject the lake asked for) and, the role's row for a source of one venue,
   the venue master's ID it resolved; "Limits and use" -- what Kalshi allows
   and what the plugin spends of it, its calls and the rate-limited ones
-  waited out, the last call and the last error; "Stream" -- "Does not
+  waited out, the last call and the last error, and, from 0.10.0, "Fees":
+  Kalshi's fee schedule (kalshi.com/docs/kalshi-fee-schedule.pdf) could not
+  be read on 2026-10-26 -- HTTP 429 behind a bot challenge, as on
+  2026-10-24 -- so no rate is stated or assumed, and what Kalshi's API
+  states per series instead (`fee_type`, `fee_multiplier`, its category,
+  an event's override; `fees.py`); "Stream" -- "Does not
   stream": it reads a contract when it is wanted, at most once a second.
 - **Datasets**: "Served" -- each dataset (`live`, `outcomes`), its data, how
   its rows arrive, its day, its default terms and whether a deployment admin

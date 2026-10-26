@@ -35,6 +35,20 @@ Kalshi's vocabulary is read.
   reported; its payout time `settlement_ts`, set when finalized. Kalshi
   states no time of determination, so the determination is valid from when
   the answer first stating it arrived.
+- **Its settlement timer** (from 0.10.0; the options sample's Resolution
+  window, its question 1) is the window to dispute a determination: "A
+  settlement timer then runs for `settlement_timer_seconds`", while the
+  market stays `determined`, and an `amended` market's "Settlement timer
+  restarts" (docs.kalshi.com, "Market lifecycle"). Kalshi states the
+  timer's length but not when it started, so its end
+  (`Outcome.challenge_ends_at_ns`) is the timer counted from when the
+  answer stating the determination first arrived -- set only where the
+  plugin's read before it, at most two minutes earlier (the SDK reads a
+  contract past its close each minute), still stated none, so the end is at
+  most that late and never early. A determination first read any later
+  -- after a restart, or a contract first asked for once determined --
+  states no end (0): the timer is never counted from a read it did not
+  follow.
 - **A range market's bounds** (contract v26; the gaps spec's A4) are its
   `floor_strike` and `cap_strike` as its `strike_type` reads them
   (docs.kalshi.com, "Get Market"): `greater` a floor not inclusive,
@@ -62,6 +76,7 @@ Kalshi's vocabulary is read.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as _dt
 import re
 from collections.abc import Mapping, Sequence
@@ -104,6 +119,12 @@ STAGES = {"determined": DETERMINED, "amended": DETERMINED, "disputed": DISPUTED,
           "finalized": FINAL}  # fmt: skip
 #: Where Kalshi's word for a determination is, as reported.
 RESULT = "kalshi:result"
+#: The statuses whose determination starts Kalshi's settlement timer.
+TIMED = frozenset({"determined", "amended"})
+#: The longest the read before one first stating a determination may be,
+#: for the timer to be counted from that answer: the SDK reads a contract
+#: past its close each minute.
+FOLLOWED_WITHIN_NS = 120 * NANOS_PER_SECOND
 
 LIMITS = Limits(
     allowed="Kalshi limits its API's requests per account tier; its market data needs no key",
@@ -339,6 +360,11 @@ class KalshiMarket:
 
     def __init__(self, client: Kalshi, mode: str = "live") -> None:
         self.client = client
+        #: Each market's status at its last read, and when that read was.
+        self._seen: dict[str, tuple[str, int]] = {}
+        #: Each market's settlement timer's end, by the status it was counted
+        #: for.
+        self._timer: dict[str, tuple[str, int]] = {}
         address = REST if mode == "live" else f"{mode}: no call leaves the deployment"
         self.session = Session(
             mode=mode,
@@ -359,7 +385,34 @@ class KalshiMarket:
         body = fetched.value.get("market") if isinstance(fetched.value, Mapping) else None
         if not isinstance(body, Mapping) or "ticker" not in body:
             return None
-        return contract(body, fetched.raw_key, fetched.received_at_ns)
+        read = contract(body, fetched.raw_key, fetched.received_at_ns)
+        return self.timed(read, body.get("settlement_timer_seconds"), fetched.received_at_ns)
+
+    def timed(self, read: Contract, timer: object, arrived_ns: int) -> Contract:
+        """The contract with its settlement timer's end, where its
+        determination was first read right after a read stating none (or
+        another stage): the timer Kalshi states, counted from when that
+        answer arrived. Every read is noted, so the next one can tell."""
+        now = self.client.clock_ns()
+        previous = self._seen.get(read.code)
+        self._seen[read.code] = (read.status, now)
+        if read.resolution is None or read.status not in TIMED:
+            self._timer.pop(read.code, None)
+            return read
+        held = self._timer.get(read.code)
+        if held is None or held[0] != read.status:
+            seconds = number(timer) if not isinstance(timer, bool) else None
+            followed = (
+                previous is not None
+                and previous[0] != read.status
+                and 0 <= arrived_ns - previous[1] <= FOLLOWED_WITHIN_NS
+            )
+            if not followed or seconds is None or seconds < 0:
+                return read
+            held = (read.status, arrived_ns + int(seconds * NANOS_PER_SECOND))
+            self._timer[read.code] = held
+        said = dataclasses.replace(read.resolution, challenge_ends_at_ns=held[1])
+        return dataclasses.replace(read, resolution=said)
 
     def event(self, ref: str) -> Event | None:
         """The event a contract belongs to, by its reference (the contract's
