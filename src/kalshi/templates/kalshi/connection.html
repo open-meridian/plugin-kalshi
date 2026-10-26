@@ -1,15 +1,23 @@
 {#- Kalshi's Connection: the event-contract venue's
     (meridian/roles/data/event_contracts/connection.html), and under
-    "Limits and use" one line of Kalshi's fee schedule: not read, why, and
-    what Kalshi states per series (fees.py), the whole a tap away. -#}
+    "Limits and use" one line of Kalshi's fees: from 0.11.0 how many
+    contracts served take their series' fee type and multiplier, an event's
+    override, or none (ruling 630), and the coefficients by fee type of
+    Kalshi's published formula; the whole, each contract's computed
+    coefficients among it, a tap away (fees.py). -#}
 {% extends "meridian/roles/data/event_contracts/connection.html" %}
 {% block vendor_rows %}
 {{ super() }}
 {% if section == "Limits and use" %}
 {% import "meridian/roles/_rows.html" as om %}
 {% set fees = data.fees %}
-{% set rates %}{% for r in fees.rates %}{{ r.category }} {{ r.taker }}{% if not loop.last %}, {% endif %}{% endfor %}{% endset %}
-{% set note = [fees.not_read, fees.formula, ("read " if fees.rates else "tried ") ~ fees.read_on ~ " at " ~ fees.source, fees.per_market]|select|join("; ") %}
-{{ om.row("Fees", ("Taker by category: " ~ rates ~ "; makers " ~ fees.makers) if fees.rates else "Not read", note) }}
+{% set rates %}{% for r in fees.rates %}{{ r.category }} {{ r.taker }}/{{ r.maker }}{% if not loop.last %}, {% endif %}{% endfor %}{% endset %}
+{% set series = fees.markets|selectattr("source", "equalto", "series")|list|length %}
+{% set overridden = fees.markets|selectattr("source", "equalto", "event")|list|length %}
+{% set unrated = fees.markets|selectattr("source", "equalto", "none")|list|length %}
+{% set applying = ("Per market: " ~ series ~ " by series, " ~ overridden ~ " by event, " ~ unrated ~ " none; ") if fees.markets else "" %}
+{% set each %}{% for m in fees.markets[:3] %}{{ m.code }} {{ (m.taker ~ "/" ~ m.maker) if m.taker else "no rate" }} ({{ m.said }}){% if not loop.last %}; {% endif %}{% endfor %}{% if fees.markets|length > 3 %}; and {{ fees.markets|length - 3 }} more, each in read_connection{% endif %}{% endset %}
+{% set note = [fees.per_market, each, fees.formula, "read " ~ fees.read_on ~ " at " ~ fees.source, fees.not_read]|select|join("; ") %}
+{{ om.row("Fees", (applying ~ ("Taker/maker x multiplier: " ~ rates)) if fees.rates else "Not read", note) }}
 {% endif %}
 {% endblock %}

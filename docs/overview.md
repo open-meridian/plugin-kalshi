@@ -72,11 +72,24 @@ or for a contract first asked about once determined -- your pages show
 
 ## Fees
 
-Kalshi's fee schedule could not be read when this version was made (its
-page refused automated reads), so Connection's "Fees" row shows no rate and
-says why. Kalshi does state, for each series, which fee formula applies and
-its multiplier; the coefficient they multiply is the schedule's. The
-schedule is read and dated at the plugin's next version, when it can be.
+Connection's "Fees" row shows the fee for each contract the plugin serves,
+computed from what Kalshi states for its series -- which fee formula applies
+and its multiplier -- or for its event where it overrides them, with
+Kalshi's published formula: a taker pays 0.07 x contracts x price x (1 -
+price) times the multiplier, rounded up to the next cent; a maker, where the
+series has maker fees, 0.0175 (0.035 for combos) times it. Kalshi's schedule
+page refused automated reads when this version was made, so the formula was
+read from an archived copy of it (effective Feb 5, 2026), with its source
+and the day it was read on the row. A formula Kalshi names that the schedule
+does not state (`flat`) gets no rate, never an assumed one.
+
+## Bars
+
+For each contract it serves, the plugin keeps hourly and daily bars --
+open, high, low and close traded prices and the contracts traded -- from
+Kalshi's candlesticks, first reaching 30 days back. Kalshi's day is New
+York's, so a daily bar is dated on New York's day. An hour or a day with no
+trade has no bar.
 
 ## Events
 
@@ -106,4 +119,4 @@ plugin, for 30 days by default, each price naming the answer it came from.
 Past that window, a day's answers are archived, kept or deleted as you set
 it. Its live dataset's default licence is served, not kept: the lake keeps
 none of its prices unless your deployment's licence says otherwise. Its
-outcomes dataset is kept by default.
+outcomes and bars datasets are kept by default.

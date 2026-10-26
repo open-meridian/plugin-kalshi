@@ -12,6 +12,7 @@ with their default licences:
 
 - `<instance>:live`: served, not kept.
 - `<instance>:outcomes`: kept.
+- `<instance>:bars`: kept.
 
 The default says nothing about Kalshi's terms. Set the deployment's licence
 there, with a note saying why, as you and the people using the deployment

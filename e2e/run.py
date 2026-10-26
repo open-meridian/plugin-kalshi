@@ -2,9 +2,10 @@
 harness (contracts v19 to v26), with sample data, beside a reader (e2e/reader.py).
 
 1. Launched: the plugin registers its catalogue; the deployment admin's tool
-   lists its two datasets: `live`, of prices and quotes, on the UTC day
+   lists its three datasets: `live`, of prices and quotes, on the UTC day
    ending at 00:00, pulled or streamed, its default licence served, not
-   kept; and from contract v23 `outcomes`, pushed, kept by default.
+   kept; from contract v23 `outcomes`, pushed, kept by default; and from
+   0.11.0 `bars`, pulled or pushed, on New York's day, kept by default.
 2. Sample data on: nothing is asked of the venue and no record minted
    until the lake wants something -- never the venue's list. The reader then
    names a contract as a custodian's book holds it, by the custodian's own
@@ -72,6 +73,7 @@ VENUE = "kalshi"
 NAME = "Kalshi"
 DATASET = f"{VENUE}:live"
 OUTCOMES = f"{VENUE}:outcomes"
+BARS = f"{VENUE}:bars"
 LOG = ".e2e/runner.log"
 RECORDED = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--recorded=")]
 EXACT = not RECORDED
@@ -193,6 +195,11 @@ def run():
         return held if DATASET in held else None
     held = until(90, datasets, "step 1, the dataset was not listed")
     must(OUTCOMES in held, f"step 1, the outcomes dataset is listed: {sorted(held)}")
+    must(BARS in held, f"step 1, the bars dataset is listed: {sorted(held)}")
+    entry, licence = held[BARS]["catalogue_entry"], held[BARS]["licence"]
+    must(entry["modes"] == ["pull", "push"] and entry["day_time_zone"] == "America/New_York"
+         and licence["kept"] is True and licence["set_by_the_deployment"] is False,
+         f"step 1, bars pulled or pushed on New York's day, kept by default: {entry}, {licence}")
     entry, licence = held[OUTCOMES]["catalogue_entry"], held[OUTCOMES]["licence"]
     must(entry["modes"] == ["push"] and licence["kept"] is True
          and licence["set_by_the_deployment"] is False,
@@ -330,7 +337,7 @@ def run():
          "step 7, the Connection page shows the same")
     served = call(named["read_datasets"], {}, "read", "unchanged")["data"]
     mapped = 2 if EXACT else 1
-    must([d["dataset"] for d in served["served"]] == [DATASET, OUTCOMES]
+    must([d["dataset"] for d in served["served"]] == [DATASET, OUTCOMES, BARS]
          and served["contracts_mapped"] == mapped and served["subjects_named"] == mapped
          and served["cash"] == "USD" and served["cash_instrument"] == usd
          and served["payouts"] == ["1.0000 USD"] and served["served"][0]["recorded"] >= 3

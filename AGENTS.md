@@ -24,7 +24,7 @@ a deployment admin approves it.
   with sample data: the synthetic exchanges in `src/kalshi/synthetic/`, or
   a developer's recorded ones.
 - **What every data plugin of an event-contract venue does is the SDK's**
-  (open-meridian 0.33.0; nothing is copied between plugins): naming each
+  (open-meridian 0.33.1; nothing is copied between plugins): naming each
   subject, resolving the cash and the venue, recording prices, quotes and
   outcomes, answering wants and keeping them current, and reporting an
   event's group (contract v26), with its range members' bounds and kept
@@ -59,9 +59,9 @@ a deployment admin approves it.
   against (`want_id=`) or declined per subject with the reason
   (`not_covered`, `beyond_history`, `source_silent`). A case of the suite
   about a kind of data the plugin never publishes (its `about`: closes,
-  bars, trades, a currency's rate, a security's price, a stablecoin) is
-  named in `not_presented` with why (`tests/venue_cases.py`); every other
-  case is mapped.
+  trades, a currency's rate, a security's price, a stablecoin) is named in
+  `not_presented` with why (`tests/venue_cases.py`); every other case is
+  mapped, from 0.11.0 `a-daily-bar` among them.
 - **Outcomes** (contract v23, the lake plan's "vL1c"): `Feed.record_outcomes`
   records each served contract's determination in the `outcomes` dataset,
   unasked, from the contract's own side (`pays`, `pays_nothing`,
@@ -78,6 +78,17 @@ a deployment admin approves it.
   (at most two minutes earlier) stated another status
   (`KalshiMarket.timed`); otherwise 0. Never counted from a read it did
   not follow.
+- **Bars** (0.11.0; rulings 624, 625): `KalshiMarket.bars` reads
+  `/markets/candlesticks` (60 or 1440 minutes) into `Candle`s with
+  `convert.candles` -- the `price` OHLC (traded YES prices), `volume_fp`, a
+  day New York's, a candle with no traded price none; no vwap. The SDK's
+  `Feed.keep_bars(BARS)` keeps them; `bars` declares `America/New_York`.
+- **Fees** (0.11.0; ruling 630): `KalshiMarket.event` also reads the
+  event's series (`/series/{ticker}`) and its fee changes
+  (`/events/fee_changes`) at most once a day each; `fees.market_fee`
+  computes each contract's taker and maker coefficients from the fee type
+  and multiplier with the published formula (0.07 x multiplier; makers
+  0.0175 or 0.035 x it). `flat`, or a type not known, is never computed.
 - **A data plugin shows no market data** (ruled 2026-10-03). Its pages are
   the data role's (meridian-design `spec/plugin-pages-follow-their-role.md`):
   Connection and Datasets, under Manage alone, drawn by the SDK's templates for

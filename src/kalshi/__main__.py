@@ -41,7 +41,7 @@ from meridian.roles.data.event_contracts import ContractMap, Feed
 
 from .convert import KalshiMarket
 from .declaration import DECLARATION, PORT
-from .declared import KIND, SAMPLE_DATA, WINDOW_DAYS
+from .declared import BARS, KIND, SAMPLE_DATA, WINDOW_DAYS
 from .page import figures_now, hold, pages
 from .synthetic import Recorded, Synthetic
 from .venue import Kalshi
@@ -120,6 +120,20 @@ async def hear_wants(plugin: meridian.Plugin, feed: Feed, configured: asyncio.Ev
     await plugin.receive(observations_wanted=feed.on_want, want_withdrawn=feed.on_withdrawn)
 
 
+async def keep_bars(feed: Feed, configured: asyncio.Event) -> None:
+    """Once the settings have said where to answer from: each contract
+    served's hourly and daily bars from Kalshi's candlesticks -- the SDK's
+    `Feed.keep_bars` (open-meridian 0.33.1; ruling 624), each pass every
+    five minutes, the first reading 30 days back -- on New York's day, as
+    the `bars` dataset declares."""
+    await configured.wait()
+    # Nothing is asked -- not even the venue resolved -- until a contract is
+    # served: the lake wanting something of the plugin comes first.
+    while not feed.contracts.mapped():
+        await asyncio.sleep(5)
+    await feed.keep_bars(BARS)
+
+
 async def report_events(feed: Feed, configured: asyncio.Event) -> None:
     """Once the settings have said where to answer from: the events of the
     contracts served, reported as Kalshi states them -- the SDK's
@@ -181,6 +195,7 @@ async def run() -> None:
             asyncio.create_task(feed.keep_current()),
             asyncio.create_task(report_health(plugin, feed)),
             asyncio.create_task(report_events(feed, configured)),
+            asyncio.create_task(keep_bars(feed, configured)),
         ]
         for task in tasks:
             task.add_done_callback(_said)

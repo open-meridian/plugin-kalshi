@@ -1,0 +1,22 @@
+{
+ "KXSYNTH": {
+  "series": {
+   "ticker": "KXSYNTH",
+   "title": "Synthetic rate",
+   "category": "Economics",
+   "frequency": "monthly",
+   "fee_type": "quadratic",
+   "fee_multiplier": 1
+  }
+ },
+ "KXSYNTHHIGH": {
+  "series": {
+   "ticker": "KXSYNTHHIGH",
+   "title": "Synthetic high temperature",
+   "category": "Climate and Weather",
+   "frequency": "daily",
+   "fee_type": "quadratic_with_maker_fees",
+   "fee_multiplier": 1
+  }
+ }
+}
