@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.10.0
+
+On open-meridian 0.33.0, contract v28 (meridian-design `plans/the-v28-build.md`;
+task `sdk-contract/venue-plugins-keep-outcome-stages-and-bars`), on core
+v28's harness.
+
+- **The settlement timer** (the options sample's Resolution window, its
+  question 1): a `determined` or `amended` outcome's
+  `Outcome.challenge_ends_at_ns` is Kalshi's `settlement_timer_seconds`
+  counted from when the answer first stating it arrived, set only where the
+  read before it -- at most two minutes earlier, the SDK reading a contract
+  past its close each minute -- stated another status, so the end is at
+  most that late and never early; an amendment restarts it (docs.kalshi.com,
+  "Market lifecycle"). Otherwise 0, "deadline not reported"
+  (`KalshiMarket.timed`, `tests/test_timer.py`).
+- **Fees** (571; task `sdk-contract/event-contract-fees-vary-by-market-category`):
+  Connection's "Limits and use" gains a "Fees" row, and `read_connection` a
+  `fees` record, saying Kalshi's fee schedule
+  (kalshi.com/docs/kalshi-fee-schedule.pdf, and kalshi.com/fee-schedule)
+  could not be read on 2026-10-26 -- HTTP 429 behind a bot challenge, as on
+  2026-10-24 -- so no rate is stated or assumed, and what Kalshi's API
+  states per series instead (`fee_type`, `fee_multiplier`, its category, an
+  event's override; `fees.py`).
+- **The suite's v28 cases**: `reports-its-feed-delay` is presented (518);
+  `a-crossed-quote-is-recorded-invalid` on a synthetic contract whose book
+  is crossed (`CROSSED`, a YES bid above the payout less the best NO bid);
+  the option-chain, filings, duplicate and gap cases not presented, the
+  SDK's list (602).
+- **`meridian plugin migrate`** (to_0_33_0): e2e/reader.py's SubjectRefs
+  handed to the SDK are `meridian.SubjectRef` (ruling 599).
+- **The pins**: open-meridian 0.33.0 and plugin-python:0.33.0 by tag and
+  digest (`sha256:c95f1a03...c0fe39c6`); core v28's runtime and harness at
+  `8def82a` (chart 0.1.313) by digest; `meridian` stays 0.1.52 in
+  check.yaml until 0.1.53 is released.
+- The README's "not released" line is gone.
+
 ## 0.9.0
 
 On open-meridian 0.32.2, contract v27 (meridian-design `plans/the-v27-build.md`,
