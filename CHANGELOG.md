@@ -25,7 +25,7 @@ core v28's harness.
   Feb 5, 2026), read 2026-10-26 from the Internet Archive's copy of
   2026-06-12: the live address answered HTTP 429 behind a bot challenge.
   Connection's "Fees" row says how many contracts take their series' fee,
-  an event's or none, each contract's a tap away and in `read_connection`'s
+  an event's or none, the first three a tap away and each in `read_connection`'s
   `fees.markets`. The series and its event's fee changes are read with the
   event, at most once a day each (`/series/{ticker}`,
   `/events/fee_changes`).

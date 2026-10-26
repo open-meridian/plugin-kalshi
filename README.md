@@ -206,8 +206,9 @@ the reading roles.
   and what the plugin spends of it, its calls and the rate-limited ones
   waited out, the last call and the last error, and "Fees": from 0.11.0
   (ruling 630) "Per market: n by series, n by event, n none" and the
-  formula's taker/maker coefficients by fee type, each contract's computed
-  coefficients and what Kalshi stated a tap away and in `read_connection`'s
+  formula's taker/maker coefficients by fee type, the first three
+  contracts' computed coefficients and what Kalshi stated a tap away, each
+  in `read_connection`'s
   `fees.markets` (`code`, `taker`, `maker`, `source`
   `series`/`event`/`none`, `said`), with the formula, its source and the
   day it was read (`fees.py`); "Stream" -- "Does not
