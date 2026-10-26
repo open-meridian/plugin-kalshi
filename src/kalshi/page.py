@@ -8,14 +8,17 @@ or size is on either page; viewing prices is for the reading roles.
 
 - **Connection** (`/`, `read_connection`): "Key" -- Live, or Sample data;
   "No key needed"; what Kalshi entitles it to; the venue master's ID it
-  resolved -- "Limits and use", with, from 0.10.0, "Fees": Kalshi's fee
-  schedule, not read and why, and what Kalshi states per series (fees.py)
-  -- and "Stream": "Does not stream", since it reads each contract when it
-  is wanted, at most once a second.
-- **Datasets** (`/datasets`, `read_datasets`): "Served" (`live`, and
-  `outcomes`), "Wants" (searched and paged), "Subjects", then a section under
-  Kalshi's name: the contract map, the cash its prices and payouts are in,
-  each contract's payout, and how Kalshi's sides make a contract.
+  resolved -- "Limits and use", with, from 0.10.0, "Fees": from 0.11.0
+  Kalshi's published formula, read from the archived schedule, and the fee
+  computed for each contract served from its series' fee type and
+  multiplier or its event's override (ruling 630; fees.py) -- and
+  "Stream": "Does not stream", since it reads each contract when it is
+  wanted, at most once a second.
+- **Datasets** (`/datasets`, `read_datasets`): "Served" (`live`,
+  `outcomes`, and from 0.11.0 `bars`), "Wants" (searched and paged),
+  "Subjects", then a section under Kalshi's name: the contract map, the
+  cash its prices and payouts are in, each contract's payout, and how
+  Kalshi's sides make a contract.
 
 Each page declares the record it renders (`answers=`), so each is also a
 read tool on the deployment's MCP surface answering the same record.
@@ -23,7 +26,7 @@ read tool on the deployment's MCP surface answering the same record.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import meridian
@@ -31,7 +34,7 @@ from meridian import Figure
 from meridian.roles.data import event_contracts
 
 from .convert import ENTITLED as ENTITLED
-from .convert import NAME, VENDOR_NOTE, VENUE
+from .convert import NAME, VENDOR_NOTE, VENUE, KalshiMarket
 from .declared import CATALOGUE
 from .fees import FEES, Fees
 
@@ -45,7 +48,8 @@ pages = meridian.Pages(TITLE, kit=KIT, templates=Path(__file__).parent / "templa
 @dataclass(frozen=True)
 class ConnectionRead(event_contracts.ConnectionRead):
     """The event-contract venue's Connection, and Kalshi's published fee
-    schedule (fees.py; from 0.10.0)."""
+    schedule (fees.py; from 0.10.0) with, from 0.11.0, the fee computed for
+    each contract served."""
 
     fees: Fees = field(default_factory=Fees)
 
@@ -62,9 +66,20 @@ def hold(feed: event_contracts.Feed) -> None:
     HELD.feed = feed
 
 
+def fees_now() -> Fees:
+    """The published formula, and the fee computed for each contract served
+    (ruling 630) from what Kalshi last stated of its series and event."""
+    feed = HELD.feed
+    market = feed.market if feed is not None else None
+    if feed is None or not isinstance(market, KalshiMarket):
+        return FEES
+    applying = [market.fee(m.contract) for m in feed.contracts.mapped()]
+    return replace(FEES, markets=sorted(applying, key=lambda f: f.code))
+
+
 def connection_now() -> ConnectionRead:
     read = event_contracts.connection_read(HELD.feed, NAME, ENTITLED)
-    return ConnectionRead(**vars(read), fees=FEES)
+    return ConnectionRead(**vars(read), fees=fees_now())
 
 
 def datasets_now() -> event_contracts.DatasetsRead:

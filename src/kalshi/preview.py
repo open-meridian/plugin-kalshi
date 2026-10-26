@@ -102,6 +102,7 @@ async def _worked() -> Feed:
         )
         lake.answer("ObservationsWanted", _delivering(want))
         await lake.receive(observations_wanted=feed.on_want)
+    await feed.keep_events(once=True)
     feed.licensed = frozenset({feed.dataset("live")})
     return feed
 

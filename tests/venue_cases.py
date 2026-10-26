@@ -24,6 +24,7 @@ from meridian.roles.data.testing import EVENT_CONTRACTS_NOT_PRESENTED
 
 from kalshi import page
 from kalshi.convert import KalshiMarket
+from kalshi.declared import BARS
 from kalshi.synthetic import Synthetic
 from kalshi.venue import Kalshi, RateLimiter
 
@@ -103,8 +104,16 @@ LOWER_TAIL, RANGE, UPPER_TAIL = (
     "KXSYNTHHIGH-26DEC10-T84", "KXSYNTHHIGH-26DEC10-B84.5", "KXSYNTHHIGH-26DEC10-T85",
 )  # fmt: skip
 
-#: The suite's cases Kalshi's one dataset never presents, each with why: the
-#: dataset publishes prices and quotes now, per contract, in dollars. From
+# ── Bars (0.33.1; ruling 624) ───────────────────────────────────────────────
+
+#: Its `bars` dataset's declaration: New York's day, Kalshi's. The base
+#: contract's synthetic candlesticks hold closed hours and New York's day
+#: before TODAY.
+BARS_DECLARED = BARS
+
+#: The suite's cases Kalshi's datasets never present, each with why: the
+#: live dataset publishes prices and quotes now, per contract, in dollars;
+#: from 0.11.0 the bars dataset its candlesticks. From
 #: contract v27 the SDK names an event-contract venue's own
 #: (`EVENT_CONTRACTS_NOT_PRESENTED`): the rates cases; the dataset's liveness,
 #: since Kalshi is polled over REST and no stream gives a heartbeat;
@@ -116,7 +125,6 @@ NOT_PRESENTED = {
     **EVENT_CONTRACTS_NOT_PRESENTED,
     "a-daily-close": "its one dataset publishes live prices and quotes, and no daily closes",
     "the-forming-day-restated": "its one dataset publishes no daily closes to restate",
-    "a-daily-bar": "its one dataset publishes live prices and quotes, and no bars",
     "an-fx-rate": "it prices event contracts, and no currency's rate against another",
     "a-stablecoin-quote": "its prices are in US dollars, and it quotes nothing in a stablecoin",
     "a-subject-another-source-resolved": "its subjects are event contracts, and no security",

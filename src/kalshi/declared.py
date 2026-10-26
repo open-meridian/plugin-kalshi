@@ -14,13 +14,22 @@ upload`:
   each contract a subject the lake asked for is, a contract past its close
   read again each minute until its outcome is final. It names no business
   date; its day is declared as the live dataset's.
+- `bars` (from 0.11.0; rulings 624, 625 and 629): each contract's hourly and
+  daily bars, Kalshi's candlesticks of the YES contract's traded prices and
+  the contracts traded, no volume-weighted price. Kept by the SDK's
+  `Feed.keep_bars` for each contract served -- every closed hour and day,
+  first read 30 days back -- recorded unasked (`push`), and a want of
+  `bars` answered from Kalshi's history (`pull`). Its day is Kalshi's,
+  New York's (`day_time_zone` `America/New_York`, `day_end_minute` 0): its
+  daily candles end at New York's midnight.
 
 **Its licence defaults** (the plan's row 20): `live` is served, not kept: the
 lake hands each row to the readers waiting for it and keeps none. `outcomes`
 is kept: an outcome is restated version by version and read back by the
 version in force or as of a time, which a dataset not kept cannot answer
-(a plugin's choice within contract v23, approved 2026-10-13). Neither default
-claims anything about Kalshi's terms, which the deployment admin settles with
+(a plugin's choice within contract v23, approved 2026-10-13). `bars` is
+kept: a closed interval's bar does not change. No default claims anything
+about Kalshi's terms, which the deployment admin settles with
 whoever uses the deployment; the admin states the deployment's licence on
 the Data sources page, which replaces it.
 
@@ -84,4 +93,17 @@ CATALOGUE = [
         day_time_zone="Etc/UTC",
         day_end_minute=0,
     ),
+    DatasetDeclaration(
+        key="bars",
+        vendor=VENDOR,
+        data_types=["meridian.v1.Bar"],
+        modes=["pull", "push"],
+        cadence=300,
+        history=30,
+        licence_default=DatasetLicence(kept=True),
+        day_time_zone="America/New_York",
+        day_end_minute=0,
+    ),
 ]
+#: The `bars` dataset's declaration, which says the day a daily bar is in.
+BARS = CATALOGUE[2]

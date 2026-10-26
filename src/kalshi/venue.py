@@ -5,7 +5,11 @@ market, asked only for a subject the lake wants, and asked again for its
 outcome once it is past its close), `/markets/{ticker}/orderbook`
 (its resting bids, YES and NO), `/markets/trades?ticker=` (its last trade)
 and, from 0.8.0, `/events/{event_ticker}` (the event a market it serves
-belongs to, with its markets, for the event's grouping).
+belongs to, with its markets, for the event's grouping); from 0.11.0
+`/markets/candlesticks` (a market's hourly or daily candles, for its bars:
+the batch endpoint, asked for one ticker at a time, as it needs no series),
+`/series/{series_ticker}` (a series' fee type and multiplier) and
+`/events/fee_changes?event_ticker=` (an event's override of them).
 No key: nothing here holds a credential, and nothing is sent but the
 request. The standard library's HTTP client; the plugin depends on nothing
 but the SDK. The market list is never read: a contract is asked for by its
@@ -228,6 +232,31 @@ class Kalshi:
             {"with_nested_markets": "true"},
             live=True,
         )
+
+    def candlesticks(self, ticker: str, start_s: int, end_s: int, minutes: int) -> Fetched:
+        """A market's candles of `minutes` (60 or 1440) ending from `start_s`
+        to `end_s`, in UTC seconds, as the batch endpoint answers them."""
+        return self._get(
+            "candlesticks",
+            ticker,
+            "/markets/candlesticks",
+            {"market_tickers": ticker, "start_ts": str(start_s), "end_ts": str(end_s),
+             "period_interval": str(minutes)},
+        )  # fmt: skip
+
+    def series(self, series_ticker: str) -> Fetched:
+        """A series, its fee type and multiplier and its category among it."""
+        return self._get(
+            "series", series_ticker, f"/series/{urllib.parse.quote(series_ticker)}", live=True
+        )
+
+    def fee_changes(self, event_ticker: str) -> Fetched:
+        """An event's fee changes: its overrides of its series' fee type and
+        multiplier, each with when it takes effect."""
+        return self._get(
+            "fee-changes", event_ticker, "/events/fee_changes", {"event_ticker": event_ticker},
+            live=True,
+        )  # fmt: skip
 
     def trades(self, ticker: str) -> Fetched:
         """A market's last trade."""

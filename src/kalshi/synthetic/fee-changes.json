@@ -1,0 +1,20 @@
+{
+ "KXSYNTHHIGH-26DEC10": [
+  {
+   "id": "synthetic-1",
+   "event_ticker": "KXSYNTHHIGH-26DEC10",
+   "series_ticker": "KXSYNTHHIGH",
+   "fee_type_override": "quadratic",
+   "fee_multiplier_override": 0.5,
+   "scheduled_ts": "2026-10-01T00:00:00Z"
+  },
+  {
+   "id": "synthetic-2",
+   "event_ticker": "KXSYNTHHIGH-26DEC10",
+   "series_ticker": "KXSYNTHHIGH",
+   "fee_type_override": null,
+   "fee_multiplier_override": null,
+   "scheduled_ts": "2026-11-01T00:00:00Z"
+  }
+ ]
+}

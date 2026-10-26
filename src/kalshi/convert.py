@@ -68,6 +68,20 @@ Kalshi's vocabulary is read.
   its markets are exhaustive, so that flag is not stated, never false (the
   gaps spec's A2). An event unchanged keeps the time its answer first
   arrived, which is when the grouping is reported valid from.
+- **Bars** (from 0.11.0; rulings 624, 625) are Kalshi's candlesticks
+  (`/markets/candlesticks`, the batch endpoint): an hour (`period_interval`
+  60) or a day (1440), each ending at its `end_period_ts`, Kalshi's day
+  ending at New York's midnight (read 2026-10-26: each daily candle ended
+  04:00 UTC in daylight time). Its prices are its `price`'s -- the YES
+  contract's traded prices, `open_dollars`, `high_dollars`, `low_dollars`,
+  `close_dollars` -- never the bid or ask's, and its volume `volume_fp`,
+  the contracts traded. A candle stating no traded price (no trade in it)
+  is no bar. Kalshi's `mean_dollars` is a mean of the traded prices, not
+  stated as weighted by volume, so no volume-weighted price is kept.
+- **Fees** (from 0.11.0; ruling 630) are computed per contract from its
+  series' `fee_type` and `fee_multiplier` (`/series/{ticker}`), or its
+  event's override in effect (`/events/fee_changes`), each read with the
+  event and again each day, with Kalshi's published formula (fees.py).
 - **The last trade** is `/markets/trades`' first, its `yes_price_dollars` (or
   `yes_price` in cents) at its `created_time`, its `trade_id` its identity.
   Kalshi's book states no time, so a quote is valid from when its answer
@@ -78,17 +92,22 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as _dt
+import logging
 import re
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from meridian.roles.data import NANOS_PER_SECOND, Endpoint, Limits, Session, Unread, number
 from meridian.roles.data.event_contracts import (
+    DAY,
     DETERMINED,
     DISPUTED,
     FINAL,
+    HOUR,
     Bound,
+    Candle,
     Cash,
     Contract,
     Event,
@@ -97,7 +116,10 @@ from meridian.roles.data.event_contracts import (
     Top,
 )
 
+from . import fees
 from .venue import BURST, NOT_FOUND, RATE_PER_SECOND, REST, Kalshi, VenueError
+
+log = logging.getLogger("kalshi")
 
 VENUE = "kalshi"
 NAME = "Kalshi"
@@ -105,10 +127,7 @@ NAME = "Kalshi"
 ENTITLED = "Public market data: a contract is read only for a subject the lake asked for"
 #: How the venue's two sides make one contract's quote, said on the Datasets
 #: page: Kalshi's book holds bids alone, YES and NO.
-VENDOR_NOTE = (
-    "A contract's quote is its best YES bid, and an ask of the payout less its best NO bid: "
-    "Kalshi's book holds bids alone, on both sides."
-)
+VENDOR_NOTE = "Its quote's ask is the payout less the best NO bid: Kalshi's book holds bids."
 #: Kalshi in the venue master: its ISO 10383 MIC.
 VENUE_IDENTIFIERS: tuple[tuple[str, str, str], ...] = (("iso10383", "KLSH", ""),)
 CASH = Cash("USD", "currency", "iso4217", "USD", "US dollar")
@@ -350,6 +369,58 @@ def tick(of: Contract, body: Mapping[str, Any], raw_key: str, received_ns: int) 
     )
 
 
+#: Kalshi's day, which its daily candles end with: New York's.
+NEW_YORK = ZoneInfo("America/New_York")
+#: Each interval's `period_interval`, in minutes.
+PERIODS = {HOUR: 60, DAY: 1440}
+#: How long a series' fee type and an event's override are held before
+#: they are read again, in nanoseconds: a day.
+FEES_HELD_NS = 86_400 * NANOS_PER_SECOND
+
+
+def _day_start(end_s: int) -> int:
+    """When the New York day ending at `end_s` started, in UTC seconds: the
+    midnight before, whatever its length (23 or 25 hours at a clock change)."""
+    ended = _dt.datetime.fromtimestamp(end_s, NEW_YORK)
+    began = _dt.datetime.combine(ended.date() - _dt.timedelta(days=1), _dt.time(0), NEW_YORK)
+    return int(began.timestamp())
+
+
+def candles(code: str, interval: str, body: Mapping[str, Any], raw_key: str) -> list[Candle]:
+    """A market's candles of `interval` from the batch endpoint's answer:
+    each that states a traded price, its prices the YES contract's traded
+    ones, its volume the contracts traded."""
+    markets = body.get("markets")
+    held = [m for m in markets if isinstance(m, Mapping)] if isinstance(markets, list) else []
+    sticks = next((m.get("candlesticks") for m in held if m.get("market_ticker") == code), None)
+    made: list[Candle] = []
+    for stick in sticks if isinstance(sticks, list) else []:
+        if not isinstance(stick, Mapping) or not isinstance(stick.get("end_period_ts"), int):
+            continue
+        end = int(stick["end_period_ts"])
+        stated = stick.get("price")
+        price: Mapping[str, Any] = stated if isinstance(stated, Mapping) else {}
+        said = [price.get(f"{k}_dollars") for k in ("open", "high", "low", "close")]
+        if all(p in (None, "") for p in said):
+            continue  # no trade in it: no bar
+        read = [number(p) for p in said]
+        unread = tuple(
+            Unread(f"candlestick.price.{k}_dollars", str(p))
+            for k, p, r in zip(("open", "high", "low", "close"), said, read, strict=True)
+            if r is None
+        )
+        volume = number(stick.get("volume_fp"))
+        if volume is None:
+            unread += (Unread("candlestick.volume_fp", str(stick.get("volume_fp"))),)
+        start = end - 3_600 if interval == HOUR else _day_start(end)
+        made.append(Candle(
+            code=code, start_ns=start * NANOS_PER_SECOND, end_ns=end * NANOS_PER_SECOND,
+            open=read[0], high=read[1], low=read[2], close=read[3], volume=volume,
+            raw_key=raw_key, unread=unread,
+        ))  # fmt: skip
+    return made
+
+
 class KalshiMarket:
     """Kalshi's market data, as the shared data plugin's work asks for it."""
 
@@ -365,11 +436,21 @@ class KalshiMarket:
         #: Each market's settlement timer's end, by the status it was counted
         #: for.
         self._timer: dict[str, tuple[str, int]] = {}
+        #: Each series' fee type and multiplier, and each event's override in
+        #: effect, with when each was read (ruling 630); each event's series.
+        self._series_fees: dict[str, tuple[int, fees.Stated | None]] = {}
+        self._event_fees: dict[str, tuple[int, fees.Stated | None]] = {}
+        self.series_of: dict[str, str] = {}
         address = REST if mode == "live" else f"{mode}: no call leaves the deployment"
         self.session = Session(
             mode=mode,
             endpoints=(
-                Endpoint("REST", address, "a market and its outcome, its book and its last trade"),
+                Endpoint(
+                    "REST",
+                    address,
+                    "a market and its outcome, its book, its last trade and candlesticks, and its "
+                    "series' fees",
+                ),
             ),
             limits=LIMITS,
             health=client.health,
@@ -430,7 +511,53 @@ class KalshiMarket:
             # An answer with its markets beside the event, as Kalshi sent
             # them before `with_nested_markets`.
             body = {**body, "markets": fetched.value["markets"]}
+        series = str(body.get("series_ticker") or "")
+        if series:
+            self.series_of[ref] = series
+            self._read_fees(ref, series)
         return event(body, fetched.raw_key, fetched.received_at_ns)
+
+    def _read_fees(self, event_ticker: str, series: str) -> None:
+        """The series' fee type and multiplier, and the event's override in
+        effect, each read at most once a day; a refusal said, and read again
+        the next time."""
+        now = self.client.clock_ns()
+        try:
+            held = self._series_fees.get(series)
+            if held is None or now - held[0] >= FEES_HELD_NS:
+                body = self.client.series(series).value
+                stated = fees.series_stated(body) if isinstance(body, Mapping) else None
+                self._series_fees[series] = (now, stated)
+            held = self._event_fees.get(event_ticker)
+            if held is None or now - held[0] >= FEES_HELD_NS:
+                body = self.client.fee_changes(event_ticker).value
+                changes = body.get("event_fee_changes") if isinstance(body, Mapping) else None
+                at = _dt.datetime.fromtimestamp(now // NANOS_PER_SECOND, _dt.UTC)
+                when = at.strftime("%Y-%m-%dT%H:%M:%SZ")
+                listed = changes if isinstance(changes, list) else []
+                self._event_fees[event_ticker] = (now, fees.override(listed, when))
+        except VenueError as refused:
+            log.warning("%s's fees not read: %s", event_ticker, refused)
+
+    def fee(self, of: Contract) -> fees.MarketFee:
+        """The fee applying to a contract (ruling 630), from its series' fee
+        type and multiplier or its event's override."""
+        series = self._series_fees.get(self.series_of.get(of.market, ""))
+        event_fee = self._event_fees.get(of.market)
+        return fees.market_fee(
+            of.code, series[1] if series else None, event_fee[1] if event_fee else None
+        )
+
+    def bars(self, of: Contract, interval: str, first_ns: int, until_ns: int) -> list[Candle]:
+        """A market's hourly or daily (New York day) candles from `first_ns`
+        to `until_ns`, from Kalshi's candlesticks (ruling 624)."""
+        minutes = PERIODS.get(interval)
+        if minutes is None:
+            return []
+        start_s, end_s = first_ns // NANOS_PER_SECOND, until_ns // NANOS_PER_SECOND
+        fetched = self.client.candlesticks(of.code, start_s, end_s, minutes)
+        body = fetched.value if isinstance(fetched.value, Mapping) else {}
+        return candles(of.code, interval, body, fetched.raw_key)
 
     def last(self, of: Contract) -> Tick:
         fetched = self.client.trades(of.code)
