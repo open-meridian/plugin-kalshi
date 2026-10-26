@@ -91,5 +91,21 @@
    "no_dollars": [],
    "yes_dollars": []
   }
+ },
+ "KXSYNTH-26DEC-T4.75": {
+  "orderbook_fp": {
+   "no_dollars": [
+    [
+     "0.4500",
+     "20.00"
+    ]
+   ],
+   "yes_dollars": [
+    [
+     "0.5800",
+     "40.00"
+    ]
+   ]
+  }
  }
 }
