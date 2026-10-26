@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.11.0
+
+On open-meridian 0.33.1, contract v28 (rulings 624, 625, 629, 630, 647 to
+649; task `sdk-contract/venue-plugins-keep-outcome-stages-and-bars`), on
+core v28's harness.
+
+- **Bars** (624, 625): a third dataset, `bars` (`meridian.v1.Bar`; pull and
+  push; New York's day, `America/New_York`; kept): each contract's hourly
+  and daily bars from Kalshi's candlesticks (`/markets/candlesticks`, the
+  batch endpoint, `period_interval` 60 and 1440) -- the YES contract's
+  traded prices (`price.*_dollars`), the contracts traded (`volume_fp`), no
+  volume-weighted price; a candle with no trade is no bar. Kept by the
+  SDK's `Feed.keep_bars` every five minutes, first 30 days back.
+  `BARS_DECLARED` in `tests/venue_cases.py`; `a-daily-bar` is presented. On
+  the synthetic exchange one pass keeps 6 bars of the base contract: 4
+  hours and 2 New York days.
+- **Fees computed** (630): each contract's taker and maker coefficients from
+  its series' `fee_type` and `fee_multiplier`, or its event's override in
+  effect, with Kalshi's published formula -- round up(0.07 x C x P x (1-P))
+  to the next cent, 0.07 times the multiplier; makers 0.0175 (combos 0.035)
+  times it where the type has maker fees; `flat` not computed. The formula
+  is the fee schedule's (kalshi.com/docs/kalshi-fee-schedule.pdf, effective
+  Feb 5, 2026), read 2026-10-26 from the Internet Archive's copy of
+  2026-06-12: the live address answered HTTP 429 behind a bot challenge.
+  Connection's "Fees" row says how many contracts take their series' fee,
+  an event's or none, each contract's a tap away and in `read_connection`'s
+  `fees.markets`. The series and its event's fee changes are read with the
+  event, at most once a day each (`/series/{ticker}`,
+  `/events/fee_changes`).
+- **The pins**: open-meridian 0.33.1 and plugin-python:0.33.1 by tag and
+  digest (`sha256:75ec238c...d5f46bac`); core's runtime and harness stay at
+  `8def82a` (chart 0.1.313); `meridian` stays 0.1.52 in check.yaml.
+
 ## 0.10.0
 
 On open-meridian 0.33.0, contract v28 (meridian-design `plans/the-v28-build.md`;

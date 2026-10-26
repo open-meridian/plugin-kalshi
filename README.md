@@ -5,27 +5,29 @@ deployment's lake: a data plugin. For each contract a deployment's readers
 ask about, it records the last trade's price and the best bid and offer, per
 contract in dollars, and the best bid and offer with their sizes as a quote,
 every figure exactly as Kalshi stated it; and, from contract v23, each such
-contract's outcome once Kalshi determines it. No key: Kalshi's market data
-is public.
+contract's outcome once Kalshi determines it; and, from 0.11.0, each
+contract's hourly and daily bars from Kalshi's candlesticks. No key:
+Kalshi's market data is public.
 
 It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.33.0), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.33.1), never copied
 between them.
 
-**Status.** 0.10.0, built on open-meridian 0.33.0 (contract v28: a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge, its fee schedule's state on Connection; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+**Status.** 0.11.0, built on open-meridian 0.33.1 (contract v28: each contract's hourly and daily bars from Kalshi's candlesticks, each contract's fee computed from its series' fee type and multiplier with Kalshi's published formula, a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
 role `data`, and proven against the core it pins, by digest.
 
 ## What it does
 
-Two datasets, declared from code in its catalogue (`declaration.py`):
+Three datasets, declared from code in its catalogue (`declaration.py`):
 
 | Dataset | Data | Modes | Day | Default licence |
 |---|---|---|---|---|
 | `<instance>:live` | each contract's last trade, best bid and ask as prices; its best bid and offer with sizes as a quote | pull, stream | `Etc/UTC`, ending at 00:00 | served, not kept |
 | `<instance>:outcomes` | each contract's outcome, a new version at each stage Kalshi states (contract v23) | push | `Etc/UTC`, ending at 00:00 (an outcome names no business date) | kept |
+| `<instance>:bars` | from 0.11.0, each contract's hourly and daily bars, Kalshi's candlesticks of its traded prices, no volume-weighted price | pull, push | `America/New_York`, ending at 00:00 | kept |
 
 - **Per subject wanted, never the whole venue.** A reader reads a price or
   quote nothing has recorded; the lake asks this plugin (a want). The plugin
@@ -114,6 +116,33 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
   contract v27 (ruling 464) each range member's floor, cap and unit go with
   its event's report (`ReportEventGroupRequest.member_bounds`), which the
   member's instrument record takes as values offered; a person's value wins.
+- **Bars** (from 0.11.0; rulings 624 and 625). For each contract it
+  serves, the plugin keeps hourly and daily bars from Kalshi's candlesticks
+  (`/markets/candlesticks`, the batch endpoint, one ticker at a time;
+  `period_interval` 60 or 1440): open, high, low and close the YES
+  contract's traded prices (`price.open_dollars` and the rest, never the
+  bid's or ask's), volume the contracts traded (`volume_fp`). A candle
+  stating no traded price -- no trade in it -- is no bar. Kalshi's day ends
+  at New York's midnight (its daily candles end 04:00 UTC in daylight time,
+  05:00 in standard), so the `bars` dataset declares New York's day and a
+  daily bar is dated on it. `mean_dollars` is a mean of the traded prices,
+  not stated as volume-weighted, so no volume-weighted price is kept. The
+  SDK's `Feed.keep_bars` (open-meridian 0.33.1) runs it: every five
+  minutes each closed hour and day since the last kept, first 30 days back,
+  recorded unasked; a want of `bars` is answered from Kalshi's history.
+- **Fees** (from 0.11.0; ruling 630). Each contract's fee is computed from
+  its series' `fee_type` and `fee_multiplier` (`/series/{ticker}`), or its
+  event's override in effect (`/events/fee_changes`), read with the event
+  it reports and again each day, with Kalshi's published formula: a taker
+  pays round up(0.07 x C x P x (1-P)) to the next cent, 0.07 times the
+  multiplier; a maker, where the type has maker fees, 0.0175 (0.035 for
+  combos) times it (`fees.py`). The schedule
+  (kalshi.com/docs/kalshi-fee-schedule.pdf, effective Feb 5, 2026) answered
+  HTTP 429 behind a bot challenge on 2026-10-26, so it was read from the
+  Internet Archive's copy of 2026-06-12. `flat` is not computed: the
+  schedule read states no flat table. Read 2026-10-26, the S&P 500 and
+  Nasdaq-100 series state `quadratic` at 1 where that schedule charges
+  them 0.035: the API's statement, current, is the one used.
 - **The venue** is resolved in the platform's venue master by Kalshi's MIC
   (`iso10383` `KLSH`), and each row names its `VEN-` ID. A deployment that
   does not hold it gets each row with the venue left empty and the code
@@ -123,8 +152,9 @@ Two datasets, declared from code in its catalogue (`declaration.py`):
 
 The SDK's data suite's cases about a kind of data this plugin never
 publishes are marked not presented, with why, as contracts v19 and v20
-allow (`tests/venue_cases.py`): daily closes and bars, trades, a currency's rate, a
-stablecoin price and a security's price. It records no trades, so a restart
+allow (`tests/venue_cases.py`): daily closes, trades, a currency's rate, a
+stablecoin price and a security's price. From 0.11.0 `a-daily-bar` passes
+on the synthetic contract's candlesticks of New York's day before. It records no trades, so a restart
 leaves no gap of trades to read back (`a-restarts-gap-backfilled`, contract
 v20, not presented): its live dataset is read again when it is next wanted.
 Contract v22's two calendar cases are not presented either: it reads no
@@ -174,14 +204,15 @@ the reading roles.
   subject the lake asked for) and, the role's row for a source of one venue,
   the venue master's ID it resolved; "Limits and use" -- what Kalshi allows
   and what the plugin spends of it, its calls and the rate-limited ones
-  waited out, the last call and the last error, and, from 0.10.0, "Fees":
-  Kalshi's fee schedule (kalshi.com/docs/kalshi-fee-schedule.pdf) could not
-  be read on 2026-10-26 -- HTTP 429 behind a bot challenge, as on
-  2026-10-24 -- so no rate is stated or assumed, and what Kalshi's API
-  states per series instead (`fee_type`, `fee_multiplier`, its category,
-  an event's override; `fees.py`); "Stream" -- "Does not
+  waited out, the last call and the last error, and "Fees": from 0.11.0
+  (ruling 630) "Per market: n by series, n by event, n none" and the
+  formula's taker/maker coefficients by fee type, each contract's computed
+  coefficients and what Kalshi stated a tap away and in `read_connection`'s
+  `fees.markets` (`code`, `taker`, `maker`, `source`
+  `series`/`event`/`none`, `said`), with the formula, its source and the
+  day it was read (`fees.py`); "Stream" -- "Does not
   stream": it reads a contract when it is wanted, at most once a second.
-- **Datasets**: "Served" -- each dataset (`live`, `outcomes`), its data, how
+- **Datasets**: "Served" -- each dataset (`live`, `outcomes`, from 0.11.0 `bars`), its data, how
   its rows arrive, its day, its default terms and whether a deployment admin
   has licensed it
   ("Licensed" or "Not licensed yet", read from the deployment from contract

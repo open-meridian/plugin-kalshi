@@ -13,16 +13,16 @@ same order. Neither shows a price, a side of the book or a size.
   deployment does not hold it.
 - **Limits and use**: what Kalshi allows and what the plugin spends of
   it, how many calls it made and how many met a rate limit and waited it
-  out, the last call and the last error; and **Fees**: Kalshi's fee
-  schedule could not be read when this version was made, so no rate is
-  shown, with why, and what Kalshi states for each series instead (tap the
-  row for the whole).
+  out, the last call and the last error; and **Fees**: how many contracts
+  served take their series' fee and how many their event's override, and
+  the formula's taker and maker coefficients by fee type; tap the row for
+  each contract's, the formula, its source and the day it was read.
 - **Stream**: "Does not stream": it reads a contract when it is wanted.
 
 ## Datasets
 
-- **Served**: each of its datasets, prices and quotes (`live`) and
-  outcomes (`outcomes`), with its data, how rows arrive, its day and default
+- **Served**: each of its datasets, prices and quotes (`live`), outcomes
+  (`outcomes`) and bars (`bars`), with its data, how rows arrive, its day and default
   terms, whether a deployment admin has licensed it ("Licensed" or "Not
   licensed yet"), what it recorded and declined, and when it last recorded.
 - **Wants**: the wants the lake sent it, those it keeps current first, each
