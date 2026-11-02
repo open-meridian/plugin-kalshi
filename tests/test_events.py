@@ -28,8 +28,10 @@ class Clock:
 
 
 async def _serving(lake: Lake, code: str) -> event_contracts.Feed:
-    feed = event_contracts.Feed(
-        lake, venue.market(), event_contracts.ContractMap(), clock_ns=lambda: venue.NOW_NS
+    feed = lake.bind(
+        event_contracts.Feed(
+            venue.market(), event_contracts.ContractMap(), clock_ns=lambda: venue.NOW_NS
+        )
     )
     subject = await held(lake.instruments, feed, code)
     await feed.name([subject])
@@ -105,8 +107,10 @@ async def test_an_event_unchanged_is_not_reported_again_and_one_changed_is() -> 
 
 async def test_an_event_a_member_of_which_does_not_resolve_is_held_back() -> None:
     lake, clock = Lake(venue.VENUE), Clock()
-    feed = event_contracts.Feed(
-        lake, venue.market(), event_contracts.ContractMap(), clock_ns=lambda: venue.NOW_NS
+    feed = lake.bind(
+        event_contracts.Feed(
+            venue.market(), event_contracts.ContractMap(), clock_ns=lambda: venue.NOW_NS
+        )
     )
     subject = await held(lake.instruments, feed, venue.RANGE)
     await feed.name([subject])

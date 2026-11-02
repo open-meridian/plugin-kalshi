@@ -13,10 +13,10 @@ It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.33.1), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.35.0), never copied
 between them.
 
-**Status.** 0.11.0, built on open-meridian 0.33.1 (contract v28: each contract's hourly and daily bars from Kalshi's candlesticks, each contract's fee computed from its series' fee type and multiplier with Kalshi's published formula, a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+**Status.** 0.12.0, built on open-meridian 0.35.0 (contract v29; from 0.12.0 its work is one class for its role, `Lake` -- the SDK's event-contract feed -- registered with `meridian.run`; contract v28: each contract's hourly and daily bars from Kalshi's candlesticks, each contract's fee computed from its series' fee type and multiplier with Kalshi's published formula, a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
 role `data`, and proven against the core it pins, by digest.
 
 ## What it does

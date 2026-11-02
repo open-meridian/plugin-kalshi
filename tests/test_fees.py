@@ -63,7 +63,7 @@ def test_an_events_override_in_effect_applies_before_its_series() -> None:
 
 def test_connection_says_which_fee_applies_to_each_contract_served() -> None:
     lake = Lake(v.VENUE)
-    feed = Feed(lake, v.market(), ContractMap(), clock_ns=lambda: v.NOW_NS)
+    feed = lake.bind(Feed(v.market(), ContractMap(), clock_ns=lambda: v.NOW_NS))
 
     async def served() -> None:
         for code in (v.BASE, v.RANGE):
