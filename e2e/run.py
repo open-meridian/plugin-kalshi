@@ -246,7 +246,10 @@ def run():
     # 4. Prices wanted, served to the reader, heard.
     read(f"/follow?subject={subject}&subject={resolved}")
     first = read(f"/prices?subject={subject}&dataset={DATASET}")
-    must(not first["prices"] and first["unanswered"],
+    # The lake asks the plugin at once: unanswered as asked or, where the
+    # plugin's answer is already in (core v29's lake waits a moment for it),
+    # the rows it recorded -- as plugin-polymarket's run holds it.
+    must(first["unanswered"] or first["prices"],
          f"step 4, a price not recorded is asked of the plugin: {first}")
 
     def heard(row, kinds):
