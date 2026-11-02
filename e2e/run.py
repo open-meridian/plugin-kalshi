@@ -17,8 +17,8 @@ harness (contracts v19 to v26), with sample data, beside a reader (e2e/reader.py
 3. Licensed and entitled: the admin sets each dataset's licence as its
    default says -- `live` served, not kept; `outcomes` kept -- and entitles
    the reader to both.
-4. Prices wanted and served: the reader follows the contract and reads its
-   latest; the lake asks the plugin, which reads the record (W3.6), names it
+4. Prices wanted and served: the reader reads the contract's latest and follows
+   it; the lake asks the plugin, which reads the record (W3.6), names it
    Kalshi's contract by the custodian's symbol, joins Kalshi's own code to
    it with Kalshi's words offered, resolves the dollar, and
    records its last trade, best bid and ask -- the ask the payout less the
@@ -243,11 +243,13 @@ def run():
            "personal_use=false", "note=Kept, as the default says, for the e2e's reader.")
     runner("entitle", "--instance", "reader", OUTCOMES, "note=The e2e's reader.")
 
-    # 4. Prices wanted, served to the reader, heard.
-    read(f"/follow?subject={subject}&subject={resolved}")
+    # 4. Prices wanted, served to the reader, heard. The read comes first:
+    # from open-meridian 0.35 following reopens the reader's one stream,
+    # which catches up by reading the latest -- itself a want of the plugin.
     first = read(f"/prices?subject={subject}&dataset={DATASET}")
     must(not first["prices"] and first["unanswered"],
          f"step 4, a price not recorded is asked of the plugin: {first}")
+    read(f"/follow?subject={subject}&subject={resolved}")
 
     def heard(row, kinds):
         rows = [h for h in read("/heard")["heard"]
