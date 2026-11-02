@@ -27,7 +27,7 @@ a deployment admin approves it.
   with sample data: the synthetic exchanges in `src/kalshi/synthetic/`, or
   a developer's recorded ones.
 - **What every data plugin of an event-contract venue does is the SDK's**
-  (open-meridian 0.35.0; nothing is copied between plugins): naming each
+  (open-meridian 0.35.1; nothing is copied between plugins): naming each
   subject, resolving the cash and the venue, recording prices, quotes and
   outcomes, answering wants and keeping them current, and reporting an
   event's group (contract v26), with its range members' bounds and kept
