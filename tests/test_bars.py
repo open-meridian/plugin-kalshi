@@ -24,7 +24,7 @@ def _at(text: str) -> int:
 async def test_hours_and_new_york_days_closed_kept_from_its_candlesticks() -> None:
     lake = Lake(v.VENUE)
     market = v.market()
-    feed = Feed(lake, market, ContractMap(), clock_ns=lambda: v.NOW_NS)
+    feed = lake.bind(Feed(market, ContractMap(), clock_ns=lambda: v.NOW_NS))
     await feed.name([await lake.held(feed, v.BASE)])
     assert await feed.keep_bars(v.BARS_DECLARED, once=True) == 6
     bars = lake.rows("RecordBars")

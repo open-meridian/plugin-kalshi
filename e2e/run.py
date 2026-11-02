@@ -48,8 +48,9 @@ harness (contracts v19 to v26), with sample data, beside a reader (e2e/reader.py
    the dollar's record.
 8. Its raw responses are in its granted storage, and `store lake` prints no
    row of the live dataset kept, each serving of it, the wants asked,
-   answered, declined and withdrawn, no miss, and the outcome's one row
-   kept.
+   answered and declined, none standing -- a dataset served, not kept, is
+   never kept current, each read asking it again (core v29, ruling 734) --
+   no miss, and the outcome's one row kept.
 
 `make e2e-recorded` (`--recorded=DIR`) runs the same on a developer's
 recording of Kalshi's real answers (e2e/record.py), naming the first binary
@@ -246,7 +247,10 @@ def run():
     # 4. Prices wanted, served to the reader, heard.
     read(f"/follow?subject={subject}&subject={resolved}")
     first = read(f"/prices?subject={subject}&dataset={DATASET}")
-    must(not first["prices"] and first["unanswered"],
+    # The lake asks the plugin at once: unanswered as asked or, the dataset
+    # served, not kept, the rows the plugin's answer served this read (core
+    # v29, ruling 734) -- as plugin-polymarket's run holds it.
+    must(first["unanswered"] or first["prices"],
          f"step 4, a price not recorded is asked of the plugin: {first}")
 
     def heard(row, kinds):
@@ -365,11 +369,13 @@ def run():
         lines = compose("run", "--rm", "-T", "store", "lake").stdout.split("\n")
         for instrument_id, name in names.items():
             lines = [line.replace(instrument_id, name) for line in lines]
-        withdrawn = any(line.startswith(f"want|{DATASET}|withdrawn|") for line in lines)
         declined = any(line.startswith(f"want|{DATASET}|declined|RANGE|") for line in lines)
-        return lines if withdrawn and declined else None
-    lines = until(240, lake, "step 8, the standing want was not withdrawn, or the range not "
-                             "declined")
+        return lines if declined else None
+    lines = until(240, lake, "step 8, the range not declined")
+    # Served, not kept, never kept current (core v29, ruling 734): each read
+    # asks it again, so no want stands, and none is withdrawn.
+    must(not any(line.startswith(f"want|{DATASET}|withdrawn|") for line in lines),
+         f"step 8, no standing want of a dataset served, not kept: {lines}")
     log("store lake:\n" + "\n".join(lines))
     must(not any(line.startswith(f"row|{DATASET}|") for line in lines),
          f"step 8, no row of a dataset served, not kept, is kept: {lines}")
