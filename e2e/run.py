@@ -3,9 +3,12 @@ harness (contracts v19 to v26), with sample data, beside a reader (e2e/reader.py
 
 1. Launched: the plugin registers its catalogue; the deployment admin's tool
    lists its three datasets: `live`, of prices and quotes, on the UTC day
-   ending at 00:00, pulled or streamed, its default licence served, not
-   kept; from contract v23 `outcomes`, pushed, kept by default; and from
-   0.11.0 `bars`, pulled or pushed, on New York's day, kept by default.
+   ending at 00:00, pulled or streamed, a gap in it not fetched again
+   (`stream_only`); from contract v23 `outcomes`, pushed, `stream_only`; and
+   from 0.11.0 `bars`, pulled or pushed, on New York's day, a gap asked
+   again (`backfill`). From contract 30 (ruling 1032) each describes
+   Kalshi's terms in words and declares no licence: none set yet, each is
+   read restrictively, kept.
 2. Sample data on: nothing is asked of the venue and no record minted
    until the lake wants something -- never the venue's list. The reader then
    names a contract as a custodian's book holds it, by the custodian's own
@@ -14,9 +17,8 @@ harness (contracts v19 to v26), with sample data, beside a reader (e2e/reader.py
    the platform's record by the ticker (rulings 199, 204) -- a market Kalshi
    does not state as binary the same way, a market Kalshi has determined,
    and the dollar by ISO 4217.
-3. Licensed and entitled: the admin sets each dataset's licence as its
-   default says -- `live` served, not kept; `outcomes` kept -- and entitles
-   the reader to both.
+3. Licensed and entitled: the admin sets each dataset's licence -- `live`
+   served, not kept; `outcomes` kept -- and entitles the reader to both.
 4. Prices wanted and served: the reader follows the contract and reads its
    latest; the lake asks the plugin, which reads the record (W3.6), names it
    Kalshi's contract by the custodian's symbol, joins Kalshi's own code to
@@ -197,19 +199,24 @@ def run():
     held = until(90, datasets, "step 1, the dataset was not listed")
     must(OUTCOMES in held, f"step 1, the outcomes dataset is listed: {sorted(held)}")
     must(BARS in held, f"step 1, the bars dataset is listed: {sorted(held)}")
-    entry, licence = held[BARS]["catalogue_entry"], held[BARS]["licence"]
-    must(entry["modes"] == ["pull", "push"] and entry["day_time_zone"] == "America/New_York"
-         and licence["kept"] is True and licence["set_by_the_deployment"] is False,
-         f"step 1, bars pulled or pushed on New York's day, kept by default: {entry}, {licence}")
-    entry, licence = held[OUTCOMES]["catalogue_entry"], held[OUTCOMES]["licence"]
-    must(entry["modes"] == ["push"] and licence["kept"] is True
-         and licence["set_by_the_deployment"] is False,
-         f"step 1, outcomes pushed and kept by default: {entry}, {licence}")
-    entry, licence = held[DATASET]["catalogue_entry"], held[DATASET]["licence"]
+    # Contract 30 (ruling 1032): Kalshi's terms in words, no licence
+    # declared; none set yet, each is read restrictively, kept.
+    for key, recovery in ((DATASET, "stream_only"), (OUTCOMES, "stream_only"),
+                          (BARS, "backfill")):
+        entry, licence = held[key]["catalogue_entry"], held[key]["licence"]
+        must("Data Terms of Use" in entry.get("terms_and_pricing", "")
+             and entry.get("gap_recovery") == recovery
+             and licence["set_by_the_deployment"] is False and licence["kept"] is True,
+             f"step 1, {key}: Kalshi's terms in words, {recovery}, no licence set: "
+             f"{entry}, {licence}")
+    entry = held[BARS]["catalogue_entry"]
+    must(entry["modes"] == ["pull", "push"] and entry["day_time_zone"] == "America/New_York",
+         f"step 1, bars pulled or pushed on New York's day: {entry}")
+    entry = held[OUTCOMES]["catalogue_entry"]
+    must(entry["modes"] == ["push"], f"step 1, outcomes pushed: {entry}")
+    entry = held[DATASET]["catalogue_entry"]
     must(entry["modes"] == ["pull", "stream"] and entry["day_time_zone"] == "Etc/UTC"
          and entry.get("day_end_minute", 0) == 0, f"step 1, its entry: {entry}")
-    must(licence["kept"] is False and licence["set_by_the_deployment"] is False,
-         f"step 1, its default licence served, not kept: {licence}")
 
     # 2. Sample data: nothing asked, nothing minted; then the reader's
     # records, as a custodian's book holds them.
@@ -236,12 +243,12 @@ def run():
         ids = read(f"/resolve?{query}")
     subject, ranged, resolved, usd = ids["contract"], ids["range"], ids["resolved"], ids["usd"]
 
-    # 3. Licensed as the default says, and entitled.
+    # 3. Licensed, and entitled.
     runner("licence", DATASET, "kept=false", "retention_days=0", "display=true",
            "personal_use=false", "note=Served, not kept, for the e2e's reader.")
     runner("entitle", "--instance", "reader", DATASET, "note=The e2e's reader.")
     runner("licence", OUTCOMES, "kept=true", "retention_days=0", "display=true",
-           "personal_use=false", "note=Kept, as the default says, for the e2e's reader.")
+           "personal_use=false", "note=Kept, for the e2e's reader.")
     runner("entitle", "--instance", "reader", OUTCOMES, "note=The e2e's reader.")
 
     # 4. Prices wanted, served to the reader, heard.
@@ -392,8 +399,8 @@ def run():
          f"step 8, no miss: the venue is held (contract v26's stand-in): {lines}")
 
     print(f"e2e OK in {int(time.time() - started)}s: on core's plugin harness, the live "
-          "dataset of prices and quotes listed by the deployment admin's tool, served, not "
-          "kept by default; nothing asked of Kalshi and no record minted before a want; a "
+          "dataset of prices and quotes listed by the deployment admin's tool with Kalshi's "
+          "terms in words, licensed served, not kept; nothing asked of Kalshi and no record minted before a want; a "
           "custodian's contract, stated by its own symbol and Kalshi's ticker, minted by the "
           "platform by the ticker, read and named, Kalshi's code joined to it, and its last trade, bid and ask recorded per contract in dollars, "
           "served to the reader and heard; its quote with sizes, the ask the payout less the "

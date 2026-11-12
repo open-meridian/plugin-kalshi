@@ -4,8 +4,10 @@
 
 A summary, not legal advice: read the terms themselves, at [kalshi.com](https://kalshi.com), before relying on them.
 
-- Kalshi's terms are for the deployment admin and the people who use the deployment to read; the plugin's default licence, served and not kept, claims nothing about them.
-- A deployment admin states the deployment's own licence on Data sources, which replaces the default.
+- Kalshi's public market data needs no key or account, and Kalshi charges nothing for it.
+- Kalshi's Data Terms of Use allow its data to be accessed and used for personal, non-commercial purposes only. Without Kalshi's prior written consent they forbid, among other things, copying, storing or compiling it, redistributing or publicly displaying it, passing it to anyone else (others in the same firm included), using it to create, value or risk-manage financial instruments, indexes or services, developing software with it, and any use of it with machine learning or artificial intelligence.
+- Kalshi provides its data as it is, with no warranty of its accuracy or timeliness.
+- Each dataset describes these terms in words on Data sources; the plugin declares no licence. A deployment admin states the deployment's own licence there, as settled with Kalshi.
 
 Nothing here says that a deployment meets them: the licence records what its admin entered.
 

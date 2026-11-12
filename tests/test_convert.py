@@ -236,3 +236,29 @@ def test_a_range_markets_bounds_are_on_its_contract_and_kept_in_the_map(tmp_path
     kept.save()
     again = ContractMap(tmp_path / "contracts.json")
     assert again.load() and again.contracts[ranged.code].floor == ranged.floor
+
+
+# ── Contract 30: a contract's category (1035) ──────────────────────────────
+
+
+def test_a_contracts_category_is_its_series_read_through_its_event() -> None:
+    # Kalshi states a market's category only on its series, reached through
+    # its event: both asked once, by their own references.
+    market = venue.market()
+    read = market.contract(venue.BASE)
+    assert read is not None and read.category == "Economics"
+    asked = venue.calls(market)
+    assert any(url.endswith("/series/KXSYNTH") for url in asked)
+    assert not any("fee_changes" in url for url in asked), "the override is the event's own"
+    again = market.contract("KXSYNTH-26DEC-T3.75")
+    assert again is not None and again.category == "Economics"
+    assert len(venue.calls(market)) == len(asked) + 1, "only the second market asked"
+
+
+def test_a_contract_whose_event_kalshi_does_not_know_states_no_category() -> None:
+    market = venue.market()
+    assert isinstance(market, convert.KalshiMarket)
+    read = market.contract(venue.NOT_BINARY)
+    assert read is not None and read.category == ""
+    before = len(venue.calls(market))
+    assert market.category_of(read.market) == "" and len(venue.calls(market)) == before

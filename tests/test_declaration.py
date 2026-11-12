@@ -11,10 +11,10 @@ from pathlib import Path
 from meridian.v1 import sidecar_pb2
 
 from kalshi.declaration import DECLARATION
-from kalshi.declared import BARS, CATALOGUE, SAMPLE_DATA
+from kalshi.declared import BARS, CATALOGUE, SAMPLE_DATA, TERMS
 
 
-def test_one_live_dataset_of_prices_and_quotes_served_not_kept() -> None:
+def test_one_live_dataset_of_prices_and_quotes() -> None:
     [live, _, _] = CATALOGUE
     assert (live.key, live.vendor, live.day_time_zone, live.day_end_minute) == (
         "live",
@@ -24,23 +24,31 @@ def test_one_live_dataset_of_prices_and_quotes_served_not_kept() -> None:
     )
     assert list(live.data_types) == ["meridian.v1.Price", "meridian.v1.Quote"]
     assert live.venue_id == "", "the venue's ID is resolved at run time, never invented"
-    licence = live.licence_default
-    assert licence is not None and not licence.kept, "served, not kept"
-    assert not (licence.display or licence.derived_use or licence.personal_use), (
-        "a default claiming nothing: the deployment's licence replaces it"
-    )
+    # Contract 30 (ruling 1032): Kalshi's terms in words, no licence; a gap
+    # is not fetched again, Kalshi serving no history of its book.
+    assert live.terms_and_pricing == TERMS
+    assert live.gap_recovery == "stream_only"
+    assert live.sessions_calendar_id == "", "Kalshi trades around the clock"
 
 
-def test_its_outcomes_pushed_and_kept() -> None:
+def test_its_outcomes_pushed() -> None:
     # Contract v23: each contract's outcome, recorded unasked, kept so that
     # its versions are read back.
     [_, outcomes, _] = CATALOGUE
     assert (outcomes.key, outcomes.vendor, outcomes.venue_id) == ("outcomes", "Kalshi", "")
     assert list(outcomes.data_types) == ["meridian.v1.Outcome"]
     assert list(outcomes.modes) == [sidecar_pb2.OBSERVATION_MODE_PUSH]
-    licence = outcomes.licence_default
-    assert licence is not None and licence.kept
-    assert not (licence.display or licence.derived_use or licence.personal_use)
+    # Kalshi states only the current determination, never the stages before.
+    assert (outcomes.terms_and_pricing, outcomes.gap_recovery) == (TERMS, "stream_only")
+
+
+def test_kalshis_terms_in_words() -> None:
+    # Ruling 1032: what Kalshi's Data Terms of Use say, within the bound, the
+    # same for each dataset.
+    assert 0 < len(TERMS) <= 2000
+    for said in ("personal, non-commercial", "prior written consent", "no key"):
+        assert said in TERMS
+    assert {d.terms_and_pricing for d in CATALOGUE} == {TERMS}
 
 
 def test_no_key_needed_and_sample_data_a_developers_setting() -> None:
@@ -65,7 +73,7 @@ def test_upload_reads_the_same_declaration() -> None:
     assert [d["modes"] for d in datasets] == [["pull", "stream"], ["push"], ["pull", "push"]]
 
 
-def test_its_bars_pushed_and_pulled_kept_on_new_yorks_day() -> None:
+def test_its_bars_pushed_and_pulled_on_new_yorks_day() -> None:
     # 0.11.0 (rulings 624, 625 and 629): the bars dataset, of the lake's bar
     # kind, on Kalshi's day, New York's: its daily candles end at midnight
     # there.
@@ -78,6 +86,5 @@ def test_its_bars_pushed_and_pulled_kept_on_new_yorks_day() -> None:
         sidecar_pb2.OBSERVATION_MODE_PUSH,
     ]
     assert (bars.day_time_zone, bars.day_end_minute, bars.history) == ("America/New_York", 0, 30)
-    licence = bars.licence_default
-    assert licence is not None and licence.kept
-    assert not (licence.display or licence.derived_use or licence.personal_use)
+    # Kalshi serves candlesticks back in time: a gap is asked again.
+    assert (bars.terms_and_pricing, bars.gap_recovery) == (TERMS, "backfill")
