@@ -421,6 +421,21 @@ def candles(code: str, interval: str, body: Mapping[str, Any], raw_key: str) -> 
     return made
 
 
+#: The longest category a contract's terms state (meridian.v1.
+#: BinaryEventContract.category).
+MOST_CATEGORY = 64
+
+
+def series_category(body: object) -> str:
+    """A series' category as Kalshi words it, from `/series/{ticker}`; empty
+    where it states none."""
+    if not isinstance(body, Mapping):
+        return ""
+    series = body.get("series") if isinstance(body.get("series"), Mapping) else body
+    said = series.get("category") if isinstance(series, Mapping) else None
+    return said.strip() if isinstance(said, str) else ""
+
+
 class KalshiMarket:
     """Kalshi's market data, as the shared data plugin's work asks for it."""
 
@@ -441,6 +456,9 @@ class KalshiMarket:
         self._series_fees: dict[str, tuple[int, fees.Stated | None]] = {}
         self._event_fees: dict[str, tuple[int, fees.Stated | None]] = {}
         self.series_of: dict[str, str] = {}
+        #: Each series' category as Kalshi words it (contract 30, 1035), read
+        #: with its fees.
+        self._series_category: dict[str, str] = {}
         address = REST if mode == "live" else f"{mode}: no call leaves the deployment"
         self.session = Session(
             mode=mode,
@@ -467,7 +485,39 @@ class KalshiMarket:
         if not isinstance(body, Mapping) or "ticker" not in body:
             return None
         read = contract(body, fetched.raw_key, fetched.received_at_ns)
+        read = dataclasses.replace(read, category=self.category_of(read.market))
         return self.timed(read, body.get("settlement_timer_seconds"), fetched.received_at_ns)
+
+    def category_of(self, event_ticker: str) -> str:
+        """The category Kalshi states for a market (contract 30, 1035): its
+        series' `category`, in Kalshi's word (`Economics`, `Climate and
+        Weather`), stated with its terms at ResolveIdentifier. The series is
+        learnt from the market's event, read once, and the series read with
+        its fees at most once a day; only the contract's own event and that
+        event's series are asked (the SDK's checks, 0.36.1), the event's fee
+        override left to the event's own reading. Empty where Kalshi states
+        none or either cannot be read, a failed read said and tried again
+        with the event's next contract."""
+        if not event_ticker:
+            return ""
+        try:
+            if event_ticker not in self.series_of:
+                fetched = self.client.event(event_ticker)
+                body = fetched.value.get("event") if isinstance(fetched.value, Mapping) else None
+                said = body.get("series_ticker") if isinstance(body, Mapping) else None
+                # An event naming no series is not asked again for each of
+                # its contracts.
+                self.series_of[event_ticker] = str(said or "")
+            series = self.series_of[event_ticker]
+            if series:
+                self._read_series(series)
+        except VenueError as refused:
+            if refused.status == NOT_FOUND:
+                self.series_of.setdefault(event_ticker, "")
+            else:
+                log.warning("%s's category not read: %s", event_ticker, refused)
+            return ""
+        return self._series_category.get(self.series_of[event_ticker], "")[:MOST_CATEGORY]
 
     def timed(self, read: Contract, timer: object, arrived_ns: int) -> Contract:
         """The contract with its settlement timer's end, where its
@@ -523,11 +573,7 @@ class KalshiMarket:
         the next time."""
         now = self.client.clock_ns()
         try:
-            held = self._series_fees.get(series)
-            if held is None or now - held[0] >= FEES_HELD_NS:
-                body = self.client.series(series).value
-                stated = fees.series_stated(body) if isinstance(body, Mapping) else None
-                self._series_fees[series] = (now, stated)
+            self._read_series(series)
             held = self._event_fees.get(event_ticker)
             if held is None or now - held[0] >= FEES_HELD_NS:
                 body = self.client.fee_changes(event_ticker).value
@@ -538,6 +584,17 @@ class KalshiMarket:
                 self._event_fees[event_ticker] = (now, fees.override(listed, when))
         except VenueError as refused:
             log.warning("%s's fees not read: %s", event_ticker, refused)
+
+    def _read_series(self, series: str) -> None:
+        """A series' fee type and multiplier and its category, read at most
+        once a day; a refusal raised for the caller to say."""
+        now = self.client.clock_ns()
+        held = self._series_fees.get(series)
+        if held is None or now - held[0] >= FEES_HELD_NS:
+            body = self.client.series(series).value
+            stated = fees.series_stated(body) if isinstance(body, Mapping) else None
+            self._series_fees[series] = (now, stated)
+            self._series_category[series] = series_category(body)
 
     def fee(self, of: Contract) -> fees.MarketFee:
         """The fee applying to a contract (ruling 630), from its series' fee

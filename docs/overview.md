@@ -39,6 +39,10 @@ record on the Instruments page. If the record already states a payout that
 is not Kalshi's (another amount, or another currency), the plugin does not
 serve it.
 
+With a contract's terms the plugin states its category, in Kalshi's word
+for it (Economics, Climate and Weather): Kalshi states it on the market's
+series, which the plugin reads through the market's event, once each.
+
 ## Prices are money, not probabilities
 
 A price is what one contract costs in dollars: 0.43 means 43 cents for a

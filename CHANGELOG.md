@@ -2,7 +2,7 @@
 
 ## 0.13.0
 
-On open-meridian 0.36.0, contract 30, on core aae501d's harness (contract v30,
+On open-meridian 0.36.1, contract 30, on core aae501d's harness (contract v30,
 chart 0.1.538).
 
 - **Kalshi's terms in words** (ruling 1032): `licence_default` is gone from
@@ -21,11 +21,19 @@ chart 0.1.538).
   determination, and a want of `outcomes` is not answered -- and `bars` is
   `backfill`, a gap asked again of Kalshi's candlesticks. No sessions
   calendar (Kalshi trades around the clock), and no `most_shards`.
-- **A contract's category is not stated yet** (1035): Kalshi states it only
-  on a market's series, reached through its event, and the SDK's
-  event-contract checks hold that only the contract's own URLs are asked.
-  It is stated once the SDK admits a contract's own event and series.
-- **Pins**: open-meridian 0.36.0 and its base by digest; meridian 0.1.60 in
+- **A contract's category stated** (1035): Kalshi states it only on a
+  market's series, reached through its event, so a contract first read asks
+  for its event (for `series_ticker`, once) and that series (with its fees,
+  at most once a day), and its terms at ResolveIdentifier carry the series'
+  `category` in Kalshi's word (`Economics`). Only the contract's own event
+  and series are asked, as open-meridian 0.36.1's checks admit; the event's
+  fee override is left to its own reading. An event Kalshi does not know is
+  not asked again.
+- **open-meridian 0.36.1** (`meridian plugin migrate --to 0.36.1`, pins
+  only): its fixes state a range market's bounds only with their unit, which
+  Kalshi never states, so core no longer refuses the resolve of a range
+  market's contract (the e2e's prices were never heard on 0.36.0).
+- **Pins**: open-meridian 0.36.1 and its base by digest; meridian 0.1.60 in
   the check workflow; core's runtime and harness at `aae501d`, by digest. The
   e2e reads each dataset's terms in words, its gap recovery and no licence
   set before the admin licenses `live` served, not kept.
