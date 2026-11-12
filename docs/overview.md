@@ -58,7 +58,7 @@ part of it, what one contract settles at, and Kalshi's own word for the
 result (yes, no or scalar). Each stage Kalshi states -- determined,
 disputed, amended, finalized -- is a new version of the same outcome, so
 your readers see a disputed result as it changed, and the final one with
-when Kalshi paid out. Outcomes are kept by default. Paying the holders of a
+when Kalshi paid out. Paying the holders of a
 position is not the plugin's: it records what Kalshi determined.
 
 A determined result may be disputed while Kalshi's settlement timer runs,
@@ -117,6 +117,9 @@ records show as values offered: a value a person set always wins.
 Kalshi's answers, as received, in the storage your deployment gives the
 plugin, for 30 days by default, each price naming the answer it came from.
 Past that window, a day's answers are archived, kept or deleted as you set
-it. Its live dataset's default licence is served, not kept: the lake keeps
-none of its prices unless your deployment's licence says otherwise. Its
-outcomes and bars datasets are kept by default.
+it. What the lake keeps of each dataset is your deployment's licence, set
+on the Data sources page: until one is set, the lake keeps the rows and
+reads every use right restrictively. Each dataset describes Kalshi's
+published terms in words, shown there. A gap in the live prices or the
+outcomes is not fetched again -- Kalshi serves no history of either -- and
+a gap in the bars is asked again of Kalshi's candlesticks.

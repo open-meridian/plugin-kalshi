@@ -13,21 +13,21 @@ It is one of the lake's second batch, with
 [plugin-polymarket](https://github.com/open-meridian/plugin-polymarket): each runs the SDK's
 data suite and its checks for an event-contract venue unchanged against its own conversion
 (meridian-design `plans/the-lake-prices-the-book.md`, row 20); what the two do alike is
-the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.35.1), never copied
+the SDK's (`meridian.roles.data.event_contracts`, open-meridian 0.36.0), never copied
 between them.
 
-**Status.** 0.12.0, built on open-meridian 0.35.1 (contract v29; from 0.12.0 its work is one class for its role, `Lake` -- the SDK's event-contract feed -- registered with `meridian.run`; contract v28: each contract's hourly and daily bars from Kalshi's candlesticks, each contract's fee computed from its series' fee type and multiplier with Kalshi's published formula, a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
+**Status.** 0.13.0, built on open-meridian 0.36.0 (contract 30: each dataset describes Kalshi's terms in words and declares how a gap in it is recovered, no licence declared; contract v29: from 0.12.0 its work is one class for its role, `Lake` -- the SDK's event-contract feed -- registered with `meridian.run`; contract v28: each contract's hourly and daily bars from Kalshi's candlesticks, each contract's fee computed from its series' fee type and multiplier with Kalshi's published formula, a determination's settlement timer kept as its challenge window's end, its feed delay reported, a crossed quote recorded invalid at the edge; contract v27: each range member's bounds sent with its event's report, the events kept by the SDK's `Feed.keep_events`; contract v26: each contract's event reported as a group, a range market's bounds on its contract; contract v25's whole declaration and docs/, which a deployment shows on its Documentation tab; its work the SDK's role helpers), holding the
 role `data`, and proven against the core it pins, by digest.
 
 ## What it does
 
 Three datasets, declared from code in its catalogue (`declaration.py`):
 
-| Dataset | Data | Modes | Day | Default licence |
+| Dataset | Data | Modes | Day | A gap in it |
 |---|---|---|---|---|
-| `<instance>:live` | each contract's last trade, best bid and ask as prices; its best bid and offer with sizes as a quote | pull, stream | `Etc/UTC`, ending at 00:00 | served, not kept |
-| `<instance>:outcomes` | each contract's outcome, a new version at each stage Kalshi states (contract v23) | push | `Etc/UTC`, ending at 00:00 (an outcome names no business date) | kept |
-| `<instance>:bars` | from 0.11.0, each contract's hourly and daily bars, Kalshi's candlesticks of its traded prices, no volume-weighted price | pull, push | `America/New_York`, ending at 00:00 | kept |
+| `<instance>:live` | each contract's last trade, best bid and ask as prices; its best bid and offer with sizes as a quote | pull, stream | `Etc/UTC`, ending at 00:00 | not fetched again (`stream_only`) |
+| `<instance>:outcomes` | each contract's outcome, a new version at each stage Kalshi states (contract v23) | push | `Etc/UTC`, ending at 00:00 (an outcome names no business date) | not fetched again (`stream_only`): Kalshi states only the current determination |
+| `<instance>:bars` | from 0.11.0, each contract's hourly and daily bars, Kalshi's candlesticks of its traded prices, no volume-weighted price | pull, push | `America/New_York`, ending at 00:00 | asked again of Kalshi's candlesticks (`backfill`) |
 
 - **Per subject wanted, never the whole venue.** A reader reads a price or
   quote nothing has recorded; the lake asks this plugin (a want). The plugin
@@ -60,11 +60,14 @@ Three datasets, declared from code in its catalogue (`declaration.py`):
   day or range already past: Kalshi's public reads answer now),
   `source_silent` (Kalshi states nothing for it). A standing want keeps its
   subjects current, at most once a second, until the lake withdraws it.
-- **Served, not kept**, by default: the lake hands each row to the readers
-  waiting for it and keeps none. The deployment admin states the
-  deployment's own licence on the Data sources page, which replaces the
-  default; the default claims nothing about Kalshi's terms, which are for
-  the deployment admin and whoever uses the deployment to settle.
+- **Kalshi's terms, in words** (contract 30, ruling 1032): each dataset
+  describes Kalshi's Data Terms of Use (`declared.TERMS`) -- free, no key;
+  personal, non-commercial use only without Kalshi's prior written consent
+  -- shown on Data sources and in `docs/terms.md`. The plugin declares no
+  licence: the deployment admin states the deployment's own on the Data
+  sources page, as settled with Kalshi (served, not kept, has the lake hand
+  each live row to the readers waiting and keep none); until one is set, the
+  lake keeps the rows and reads every use right restrictively.
 - **Outcomes** (contract v23; meridian-design `plans/the-lake-prices-the-book.md`,
   "vL1c"). For each contract a reader asked about, the plugin records its
   outcome, unasked, once Kalshi determines it: from the contract's own side
@@ -79,8 +82,8 @@ Three datasets, declared from code in its catalogue (`declaration.py`):
   Kalshi's answer is unchanged. Kalshi states no time of determination, so
   an outcome is valid from when the answer first stating it arrived. A
   contract past its close is read again each minute until its final stage
-  is recorded. Kept by default, so a reader reads the version in force or
-  as of a time; paying holders is servicing's, not the lake's. **The
+  is recorded. Where the deployment's licence keeps them, a reader reads
+  the version in force or as of a time; paying holders is servicing's, not the lake's. **The
   settlement timer** (from 0.10.0; `Outcome.challenge_ends_at_ns`, the
   sample's Resolution window): Kalshi runs a determination's dispute window
   for `settlement_timer_seconds` and restarts it on an amendment
@@ -214,7 +217,8 @@ the reading roles.
   day it was read (`fees.py`); "Stream" -- "Does not
   stream": it reads a contract when it is wanted, at most once a second.
 - **Datasets**: "Served" -- each dataset (`live`, `outcomes`, from 0.11.0 `bars`), its data, how
-  its rows arrive, its day, its default terms and whether a deployment admin
+  its rows arrive, its day, Kalshi's terms and pricing in words (from
+  contract 30) and whether a deployment admin
   has licensed it
   ("Licensed" or "Not licensed yet", read from the deployment from contract
   v20), what it recorded and declined and when it last recorded, each

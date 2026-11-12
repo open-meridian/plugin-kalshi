@@ -7,16 +7,15 @@ storage for its raw responses, and no key.
 
 ## 2. License its datasets
 
-On the dashboard's **Data sources** page, the plugin's datasets are listed
-with their default licences:
-
-- `<instance>:live`: served, not kept.
-- `<instance>:outcomes`: kept.
-- `<instance>:bars`: kept.
-
-The default says nothing about Kalshi's terms. Set the deployment's licence
-there, with a note saying why, as you and the people using the deployment
-have settled it. What you enter is what your deployment records.
+On the dashboard's **Data sources** page, the plugin's three datasets are
+listed -- `<instance>:live`, `<instance>:outcomes` and `<instance>:bars` --
+each with Kalshi's published terms described in words: free, no key, and
+for personal, non-commercial use only without Kalshi's written consent.
+The plugin declares no licence. Set the deployment's licence there, with a
+note saying why, as you and Kalshi have settled it; until one is set, the
+lake keeps the rows and reads every use right restrictively. A licence
+served, not kept, has the lake hand each live price to the readers waiting
+and keep none.
 
 ## 3. Entitle the plugins that read it
 

@@ -23,15 +23,20 @@ upload`:
   New York's (`day_time_zone` `America/New_York`, `day_end_minute` 0): its
   daily candles end at New York's midnight.
 
-**Its licence defaults** (the plan's row 20): `live` is served, not kept: the
-lake hands each row to the readers waiting for it and keeps none. `outcomes`
-is kept: an outcome is restated version by version and read back by the
-version in force or as of a time, which a dataset not kept cannot answer
-(a plugin's choice within contract v23, approved 2026-10-13). `bars` is
-kept: a closed interval's bar does not change. No default claims anything
-about Kalshi's terms, which the deployment admin settles with
-whoever uses the deployment; the admin states the deployment's licence on
-the Data sources page, which replaces it.
+**Its terms and pricing** (contract 30, ruling 1032): no dataset declares a
+licence. Each describes Kalshi's published terms in plain words
+(`TERMS`), shown on Data sources and in the plugin's docs: the deployment
+admin settles them with Kalshi and sets the deployment's licence on the Data
+sources page, which is the one enforced.
+
+**How a gap is recovered** (W10.14): `live` is `stream_only` -- Kalshi serves
+no history of a market's book or of its prices as they stood, so a gap in
+what was recorded cannot be fetched again; `outcomes` is `stream_only` too --
+Kalshi states only a market's current determination, never the stages before
+it, and a want of `outcomes` is not answered; `bars` is `backfill` --
+Kalshi serves a market's candlesticks back in time, and a want of a range of
+them is answered from that history. No dataset names a sessions calendar:
+Kalshi trades around the clock.
 
 `venue_id` is empty: the venue master's ID for Kalshi is minted by the
 platform, not known to the code a catalogue is declared from, so each row
@@ -46,7 +51,7 @@ Kalshi's public market data needs no key.
 """
 
 import meridian
-from meridian import DatasetDeclaration, DatasetLicence
+from meridian import DatasetDeclaration
 
 VENDOR = "Kalshi"
 SAMPLE_DATA = "sample_data"
@@ -70,6 +75,19 @@ SETTINGS = [
     ),
 ]
 
+#: Kalshi's published terms, in plain words (ruling 1032): the same for each
+#: dataset, which come from the same public market data.
+TERMS = (
+    "Kalshi's public market data API, free and needing no key or account. Kalshi's Data Terms "
+    "of Use allow access and use for personal, non-commercial purposes only. Without Kalshi's "
+    "prior written consent they forbid copying, storing, compiling into databases, "
+    "redistributing, publicly displaying or otherwise passing the data to any third party, "
+    "others in the same firm included; using it to create, value or risk-manage financial "
+    "instruments, indexes or services; developing software with it; and any use of it with "
+    "machine learning or artificial intelligence. Kalshi provides the data as it is, with no "
+    "warranty of accuracy or timeliness."
+)
+
 CATALOGUE = [
     DatasetDeclaration(
         key="live",
@@ -78,7 +96,8 @@ CATALOGUE = [
         modes=["pull", "stream"],
         cadence=1,
         history=0,
-        licence_default=DatasetLicence(kept=False),
+        terms_and_pricing=TERMS,
+        gap_recovery="stream_only",
         day_time_zone="Etc/UTC",
         day_end_minute=0,
     ),
@@ -89,7 +108,8 @@ CATALOGUE = [
         modes=["push"],
         cadence=60,
         history=0,
-        licence_default=DatasetLicence(kept=True),
+        terms_and_pricing=TERMS,
+        gap_recovery="stream_only",
         day_time_zone="Etc/UTC",
         day_end_minute=0,
     ),
@@ -100,7 +120,8 @@ CATALOGUE = [
         modes=["pull", "push"],
         cadence=300,
         history=30,
-        licence_default=DatasetLicence(kept=True),
+        terms_and_pricing=TERMS,
+        gap_recovery="backfill",
         day_time_zone="America/New_York",
         day_end_minute=0,
     ),

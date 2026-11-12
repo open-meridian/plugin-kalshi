@@ -34,6 +34,6 @@ one record.
 
 ## Nothing kept
 
-The dataset's licence is served, not kept: the lake hands rows to the readers
-waiting and keeps none. That is the default; change the licence on the Data
-sources page if your deployment keeps them.
+The dataset's licence on the Data sources page is served, not kept: the lake
+hands rows to the readers waiting and keeps none. Change the licence there
+if your deployment keeps them.
